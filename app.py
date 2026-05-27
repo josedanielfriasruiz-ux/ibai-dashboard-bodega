@@ -470,9 +470,13 @@ c6.metric(
 # RESUMEN TRIMESTRAL
 # ==========================================
 
-resumen = pd.DataFrame()
-
 st.header("📅 Resumen trimestral")
+
+resumen_excel = pd.DataFrame({
+
+    "Trimestre": ["1T", "2T", "3T", "4T"]
+
+})
 
 if (
     "Trimestre" in ingresos.columns
@@ -480,7 +484,7 @@ if (
     "Trimestre" in gastos.columns
 ):
 
-    resumen_ingresos = (
+    ingresos_trim = (
         ingresos
         .groupby("Trimestre")
         .agg({
@@ -491,14 +495,7 @@ if (
         .reset_index()
     )
 
-    resumen_ingresos.columns = [
-        "Trimestre",
-        "Base Ingresos",
-        "IVA Repercutido",
-        "Ventas Totales"
-    ]
-
-    resumen_gastos = (
+    gastos_trim = (
         gastos
         .groupby("Trimestre")
         .agg({
@@ -509,34 +506,94 @@ if (
         .reset_index()
     )
 
-    resumen_gastos.columns = [
-        "Trimestre",
-        "Base Gastos",
-        "IVA Soportado",
-        "Gastos Totales"
-    ]
+    resumen_excel = resumen_excel.merge(
 
-    resumen = pd.merge(
-        resumen_ingresos,
-        resumen_gastos,
+        ingresos_trim[
+            [
+                "Trimestre",
+                "Base Imponible",
+                "IVA (€)",
+                "Total (€)"
+            ]
+        ],
+
         on="Trimestre",
-        how="outer"
-    ).fillna(0)
 
-    resumen["Beneficio"] = (
-        resumen["Base Ingresos"]
-        -
-        resumen["Base Gastos"]
+        how="left"
+
     )
 
-    resumen["Resultado IVA"] = (
-        resumen["IVA Repercutido"]
+    resumen_excel.columns = [
+
+        "Trimestre",
+
+        "Base Ingresos",
+
+        "IVA Repercutido",
+
+        "Ventas Totales"
+
+    ]
+
+    resumen_excel = resumen_excel.merge(
+
+        gastos_trim[
+            [
+                "Trimestre",
+                "Base Imponible",
+                "IVA (€)",
+                "Total (€)"
+            ]
+        ],
+
+        on="Trimestre",
+
+        how="left"
+
+    )
+
+    resumen_excel.columns = [
+
+        "Trimestre",
+
+        "Base Ingresos",
+
+        "IVA Repercutido",
+
+        "Ventas Totales",
+
+        "Base Gastos",
+
+        "IVA Soportado",
+
+        "Gastos Totales"
+
+    ]
+
+    resumen_excel = resumen_excel.fillna(0)
+
+    resumen_excel["Beneficio"] = (
+
+        resumen_excel["Base Ingresos"]
+
         -
-        resumen["IVA Soportado"]
+
+        resumen_excel["Base Gastos"]
+
+    )
+
+    resumen_excel["Resultado IVA"] = (
+
+        resumen_excel["IVA Repercutido"]
+
+        -
+
+        resumen_excel["IVA Soportado"]
+
     )
 
     st.dataframe(
-        resumen,
+        resumen_excel,
         use_container_width=True
     )
 
@@ -581,13 +638,11 @@ with pd.ExcelWriter(
         index=False
     )
 
-    if not resumen.empty:
-
-        resumen.to_excel(
-            writer,
-            sheet_name="Resumen_Trimestral",
-            index=False
-        )
+    resumen_excel.to_excel(
+        writer,
+        sheet_name="Resumen_Trimestral",
+        index=False
+    )
 
 st.download_button(
     label="⬇️ Descargar Excel actualizado",
