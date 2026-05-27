@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# EXCEL
+# ARCHIVO EXCEL
 # ==========================================
 
 excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
@@ -39,57 +39,64 @@ ingresos.columns = ingresos.columns.str.strip()
 gastos.columns = gastos.columns.str.strip()
 
 # ==========================================
+# ELIMINAR FILAS TOTAL
+# ==========================================
+
+if "Concepto" in ingresos.columns:
+
+    ingresos = ingresos[
+        ingresos["Concepto"]
+        .astype(str)
+        .str.upper()
+        != "TOTAL"
+    ]
+
+if "Concepto" in gastos.columns:
+
+    gastos = gastos[
+        gastos["Concepto"]
+        .astype(str)
+        .str.upper()
+        != "TOTAL"
+    ]
+
+# ==========================================
 # COLUMNAS
 # ==========================================
 
-COL_TOTAL = "Total (€)"
+COL_BASE = "Base Imponible"
 COL_IVA = "IVA (€)"
+COL_TOTAL = "Total (€)"
 
 # ==========================================
-# CONVERTIR NUMÉRICOS
+# NUMÉRICOS
 # ==========================================
 
-ingresos[COL_TOTAL] = pd.to_numeric(
-    ingresos[COL_TOTAL],
-    errors="coerce"
-).fillna(0)
+for col in [COL_BASE, COL_IVA, COL_TOTAL]:
 
-ingresos[COL_IVA] = pd.to_numeric(
-    ingresos[COL_IVA],
-    errors="coerce"
-).fillna(0)
+    ingresos[col] = pd.to_numeric(
+        ingresos[col],
+        errors="coerce"
+    ).fillna(0)
 
-gastos[COL_TOTAL] = pd.to_numeric(
-    gastos[COL_TOTAL],
-    errors="coerce"
-).fillna(0)
-
-gastos[COL_IVA] = pd.to_numeric(
-    gastos[COL_IVA],
-    errors="coerce"
-).fillna(0)
+    gastos[col] = pd.to_numeric(
+        gastos[col],
+        errors="coerce"
+    ).fillna(0)
 
 # ==========================================
-# ELIMINAR FILAS VACÍAS
-# ==========================================
-
-ingresos = ingresos[
-    ingresos[COL_TOTAL] > 0
-]
-
-gastos = gastos[
-    gastos[COL_TOTAL] > 0
-]
-
-# ==========================================
-# KPIs
+# KPIs REALES
 # ==========================================
 
 ventas = ingresos[COL_TOTAL].sum()
 
 gastos_total = gastos[COL_TOTAL].sum()
 
-beneficio = ventas - gastos_total
+ventas_base = ingresos[COL_BASE].sum()
+
+gastos_base = gastos[COL_BASE].sum()
+
+beneficio = ventas_base - gastos_base
 
 iva_rep = ingresos[COL_IVA].sum()
 
@@ -118,7 +125,7 @@ col2.metric(
 )
 
 col3.metric(
-    "Beneficio Estimado",
+    "Beneficio antes IVA",
     f"{beneficio:,.2f} €"
 )
 
@@ -140,7 +147,7 @@ col6.metric(
 )
 
 # ==========================================
-# CLIENTES
+# VENTAS CLIENTE
 # ==========================================
 
 if "Cliente" in ingresos.columns:
@@ -157,7 +164,7 @@ if "Cliente" in ingresos.columns:
     st.bar_chart(clientes)
 
 # ==========================================
-# CATEGORÍAS
+# GASTOS CATEGORÍA
 # ==========================================
 
 if "Categoría" in gastos.columns:
@@ -217,7 +224,5 @@ if pdf_file is not None:
                 texto += contenido
 
     st.success("✅ PDF leído correctamente")
-
-    st.subheader("📄 Texto detectado")
 
     st.text(texto[:5000])
