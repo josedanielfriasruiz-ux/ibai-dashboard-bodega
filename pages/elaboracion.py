@@ -33,7 +33,7 @@ depositos = pd.read_sql_query(
 lista_depositos = depositos["nombre"].tolist()
 
 # ==========================================
-# PRODUCTOS ENOLOGICOS
+# PRODUCTOS
 # ==========================================
 
 productos = pd.read_sql_query(
@@ -41,7 +41,9 @@ productos = pd.read_sql_query(
     conn
 )
 
-lista_productos = productos["producto"].unique().tolist()
+lista_productos = productos[
+    "producto"
+].unique().tolist()
 
 # ==========================================
 # FASE
@@ -95,7 +97,7 @@ producto_enologico = st.selectbox(
 )
 
 dosis = st.number_input(
-    "Dosis",
+    "Cantidad usada",
     min_value=0.0
 )
 
@@ -105,49 +107,75 @@ unidad_dosis = st.selectbox(
 
     [
 
-        "g/hL",
-        "mL/hL",
-        "mg/L",
-        "g/L"
+        "kg",
+        "g",
+        "L",
+        "mL"
 
     ]
 
 )
 
 # ==========================================
-# RECEPCION
+# OBSERVACIONES
 # ==========================================
 
-if fase == "Recepción":
+observaciones = st.text_area(
+    "Observaciones"
+)
 
-    origen = st.text_input(
-        "Origen uva"
+# ==========================================
+# GUARDAR SIMPLE
+# ==========================================
+
+guardar = st.button(
+    "Guardar elaboración"
+)
+
+if guardar:
+
+    # ======================================
+    # ELABORACION
+    # ======================================
+
+    cursor.execute("""
+
+    INSERT INTO elaboracion (
+
+        fecha,
+        deposito,
+        fase,
+        texto1
+
     )
 
-    gap = st.number_input(
-        "GAP"
-    )
+    VALUES (?, ?, ?, ?)
 
-    sulfuroso = st.number_input(
-        "Sulfuroso"
-    )
+    """, (
 
-    guardar = st.button(
-        "Guardar recepción"
-    )
+        str(fecha),
+        deposito,
+        fase,
+        observaciones
 
-    if guardar:
+    ))
+
+    # ======================================
+    # CONSUMO ENOLOGICO
+    # ======================================
+
+    if producto_enologico != "Ninguno":
 
         cursor.execute("""
 
-        INSERT INTO elaboracion (
+        INSERT INTO consumos_enologicos (
 
             fecha,
             deposito,
             fase,
-            dato1,
-            dato2,
-            texto1
+            producto,
+            dosis,
+            unidad
 
         )
 
@@ -158,165 +186,51 @@ if fase == "Recepción":
             str(fecha),
             deposito,
             fase,
-            gap,
-            sulfuroso,
-            origen
+            producto_enologico,
+            dosis,
+            unidad_dosis
 
         ))
 
-        if producto_enologico != "Ninguno":
-
-            cursor.execute("""
-
-            INSERT INTO consumos_enologicos (
-
-                fecha,
-                deposito,
-                fase,
-                producto,
-                dosis,
-                unidad
-
-            )
-
-            VALUES (?, ?, ?, ?, ?, ?)
-
-            """, (
-
-                str(fecha),
-                deposito,
-                fase,
-                producto_enologico,
-                dosis,
-                unidad_dosis
-
-            ))
-
-        conn.commit()
-
-        st.success(
-            "✅ Recepción guardada"
-        )
-
-# ==========================================
-# FERMENTACION ALCOHOLICA
-# ==========================================
-
-elif fase == "Fermentación alcohólica":
-
-    densidad = st.number_input(
-        "Densidad"
-    )
-
-    temperatura = st.number_input(
-        "Temperatura"
-    )
-
-    ph = st.number_input(
-        "pH"
-    )
-
-    at = st.number_input(
-        "Acidez total"
-    )
-
-    acetico = st.number_input(
-        "Ácido acético"
-    )
-
-    sulfuroso_total = st.number_input(
-        "Sulfuroso total"
-    )
-
-    glucosa_fructosa = st.number_input(
-        "Glucosa/Fructosa"
-    )
-
-    ipt = st.number_input(
-        "IPT"
-    )
-
-    ic = st.number_input(
-        "IC"
-    )
-
-    guardar = st.button(
-        "Guardar FA"
-    )
-
-    if guardar:
+        # ==================================
+        # DESCONTAR STOCK
+        # ==================================
 
         cursor.execute("""
 
-        INSERT INTO elaboracion (
+        INSERT INTO enologicos (
 
             fecha,
-            deposito,
-            fase,
-            dato1,
-            dato2,
-            dato3,
-            dato4,
-            dato5,
-            dato6,
-            dato7,
-            dato8,
-            dato9
+            producto,
+            tipo,
+            proveedor,
+            lote_proveedor,
+            cantidad,
+            unidad,
+            coste
 
         )
 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 
         """, (
 
             str(fecha),
-            deposito,
-            fase,
-            densidad,
-            temperatura,
-            ph,
-            at,
-            acetico,
-            sulfuroso_total,
-            glucosa_fructosa,
-            ipt,
-            ic
+            producto_enologico,
+            "CONSUMO",
+            "",
+            "",
+            -dosis,
+            unidad_dosis,
+            0
 
         ))
 
-        if producto_enologico != "Ninguno":
+    conn.commit()
 
-            cursor.execute("""
-
-            INSERT INTO consumos_enologicos (
-
-                fecha,
-                deposito,
-                fase,
-                producto,
-                dosis,
-                unidad
-
-            )
-
-            VALUES (?, ?, ?, ?, ?, ?)
-
-            """, (
-
-                str(fecha),
-                deposito,
-                fase,
-                producto_enologico,
-                dosis,
-                unidad_dosis
-
-            ))
-
-        conn.commit()
-
-        st.success(
-            "✅ FA guardada"
-        )
+    st.success(
+        "✅ Elaboración guardada"
+    )
 
 # ==========================================
 # HISTORICO
@@ -335,7 +249,7 @@ st.dataframe(
 )
 
 # ==========================================
-# CONSUMOS ENOLOGICOS
+# CONSUMOS
 # ==========================================
 
 st.header("🧪 Consumos enológicos")
