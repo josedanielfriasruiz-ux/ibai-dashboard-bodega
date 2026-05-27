@@ -7,11 +7,11 @@ import pandas as pd
 # ==========================================
 
 st.set_page_config(
-    page_title="Productos enológicos",
+    page_title="Elaboración",
     layout="wide"
 )
 
-st.title("🧪 Productos enológicos")
+st.title("🍷 Elaboración")
 
 # ==========================================
 # SQLITE
@@ -22,205 +22,332 @@ conn = sqlite3.connect("bodega.db")
 cursor = conn.cursor()
 
 # ==========================================
-# TABLA
+# DEPOSITOS
 # ==========================================
 
-cursor.execute("""
+depositos = pd.read_sql_query(
+    "SELECT * FROM depositos",
+    conn
+)
 
-CREATE TABLE IF NOT EXISTS enologicos (
+lista_depositos = depositos["nombre"].tolist()
 
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+# ==========================================
+# PRODUCTOS ENOLOGICOS
+# ==========================================
 
-    fecha TEXT,
+productos = pd.read_sql_query(
+    "SELECT * FROM enologicos",
+    conn
+)
 
-    producto TEXT,
+lista_productos = productos["producto"].unique().tolist()
 
-    tipo TEXT,
+# ==========================================
+# FASE
+# ==========================================
 
-    proveedor TEXT,
+fase = st.selectbox(
 
-    lote_proveedor TEXT,
+    "Fase elaboración",
 
-    cantidad REAL,
+    [
 
-    unidad TEXT,
+        "Recepción",
+        "Fermentación alcohólica",
+        "Fermentación maloláctica",
+        "Final fermentación maloláctica",
+        "Crianza",
+        "Clarificación",
+        "Estabilización",
+        "Embotellado",
+        "Crianza botella"
 
-    coste REAL
+    ]
 
 )
 
-""")
-
-conn.commit()
-
 # ==========================================
-# FORMULARIO
+# COMUNES
 # ==========================================
 
-st.header("➕ Entrada producto enológico")
+fecha = st.date_input(
+    "Fecha"
+)
 
-with st.form("nuevo_producto"):
-
-    fecha = st.date_input(
-        "Fecha compra"
-    )
-
-    producto = st.text_input(
-        "Producto"
-    )
-
-    tipo = st.selectbox(
-
-        "Tipo producto",
-
-        [
-
-            "Levadura",
-            "Bacteria",
-            "Nutriente",
-            "Tanino",
-            "Enzima",
-            "Clarificante",
-            "Estabilizante",
-            "Sulfuroso",
-            "Goma arábiga",
-            "Otro"
-
-        ]
-
-    )
-
-    proveedor = st.text_input(
-        "Proveedor"
-    )
-
-    lote_proveedor = st.text_input(
-        "Lote proveedor"
-    )
-
-    cantidad = st.number_input(
-        "Cantidad",
-        min_value=0.0
-    )
-
-    unidad = st.selectbox(
-
-        "Unidad",
-
-        [
-
-            "kg",
-            "g",
-            "L",
-            "mL"
-
-        ]
-
-    )
-
-    coste = st.number_input(
-        "Coste total €",
-        min_value=0.0
-    )
-
-    guardar = st.form_submit_button(
-        "Guardar producto"
-    )
+deposito = st.selectbox(
+    "Depósito",
+    lista_depositos
+)
 
 # ==========================================
-# GUARDAR
+# PRODUCTO ENOLOGICO
 # ==========================================
 
-if guardar:
+st.header("🧪 Producto enológico")
 
-    cursor.execute("""
+producto_enologico = st.selectbox(
 
-    INSERT INTO enologicos (
+    "Producto",
 
-        fecha,
-        producto,
-        tipo,
-        proveedor,
-        lote_proveedor,
-        cantidad,
-        unidad,
-        coste
+    ["Ninguno"] + lista_productos
 
+)
+
+dosis = st.number_input(
+    "Dosis",
+    min_value=0.0
+)
+
+unidad_dosis = st.selectbox(
+
+    "Unidad",
+
+    [
+
+        "g/hL",
+        "mL/hL",
+        "mg/L",
+        "g/L"
+
+    ]
+
+)
+
+# ==========================================
+# RECEPCION
+# ==========================================
+
+if fase == "Recepción":
+
+    origen = st.text_input(
+        "Origen uva"
     )
 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-
-    """, (
-
-        str(fecha),
-        producto,
-        tipo,
-        proveedor,
-        lote_proveedor,
-        cantidad,
-        unidad,
-        coste
-
-    ))
-
-    conn.commit()
-
-    st.success(
-        "✅ Producto guardado"
+    gap = st.number_input(
+        "GAP"
     )
 
+    sulfuroso = st.number_input(
+        "Sulfuroso"
+    )
+
+    guardar = st.button(
+        "Guardar recepción"
+    )
+
+    if guardar:
+
+        cursor.execute("""
+
+        INSERT INTO elaboracion (
+
+            fecha,
+            deposito,
+            fase,
+            dato1,
+            dato2,
+            texto1
+
+        )
+
+        VALUES (?, ?, ?, ?, ?, ?)
+
+        """, (
+
+            str(fecha),
+            deposito,
+            fase,
+            gap,
+            sulfuroso,
+            origen
+
+        ))
+
+        if producto_enologico != "Ninguno":
+
+            cursor.execute("""
+
+            INSERT INTO consumos_enologicos (
+
+                fecha,
+                deposito,
+                fase,
+                producto,
+                dosis,
+                unidad
+
+            )
+
+            VALUES (?, ?, ?, ?, ?, ?)
+
+            """, (
+
+                str(fecha),
+                deposito,
+                fase,
+                producto_enologico,
+                dosis,
+                unidad_dosis
+
+            ))
+
+        conn.commit()
+
+        st.success(
+            "✅ Recepción guardada"
+        )
+
 # ==========================================
-# STOCK
+# FERMENTACION ALCOHOLICA
 # ==========================================
 
-st.header("📦 Stock productos enológicos")
+elif fase == "Fermentación alcohólica":
 
-stock = pd.read_sql_query("""
+    densidad = st.number_input(
+        "Densidad"
+    )
 
-SELECT
+    temperatura = st.number_input(
+        "Temperatura"
+    )
 
-    producto,
-    tipo,
-    unidad,
-    SUM(cantidad) as stock_actual,
-    SUM(coste) as coste_total
+    ph = st.number_input(
+        "pH"
+    )
 
-FROM enologicos
+    at = st.number_input(
+        "Acidez total"
+    )
 
-GROUP BY producto, tipo, unidad
+    acetico = st.number_input(
+        "Ácido acético"
+    )
 
-""", conn)
+    sulfuroso_total = st.number_input(
+        "Sulfuroso total"
+    )
+
+    glucosa_fructosa = st.number_input(
+        "Glucosa/Fructosa"
+    )
+
+    ipt = st.number_input(
+        "IPT"
+    )
+
+    ic = st.number_input(
+        "IC"
+    )
+
+    guardar = st.button(
+        "Guardar FA"
+    )
+
+    if guardar:
+
+        cursor.execute("""
+
+        INSERT INTO elaboracion (
+
+            fecha,
+            deposito,
+            fase,
+            dato1,
+            dato2,
+            dato3,
+            dato4,
+            dato5,
+            dato6,
+            dato7,
+            dato8,
+            dato9
+
+        )
+
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+
+        """, (
+
+            str(fecha),
+            deposito,
+            fase,
+            densidad,
+            temperatura,
+            ph,
+            at,
+            acetico,
+            sulfuroso_total,
+            glucosa_fructosa,
+            ipt,
+            ic
+
+        ))
+
+        if producto_enologico != "Ninguno":
+
+            cursor.execute("""
+
+            INSERT INTO consumos_enologicos (
+
+                fecha,
+                deposito,
+                fase,
+                producto,
+                dosis,
+                unidad
+
+            )
+
+            VALUES (?, ?, ?, ?, ?, ?)
+
+            """, (
+
+                str(fecha),
+                deposito,
+                fase,
+                producto_enologico,
+                dosis,
+                unidad_dosis
+
+            ))
+
+        conn.commit()
+
+        st.success(
+            "✅ FA guardada"
+        )
+
+# ==========================================
+# HISTORICO
+# ==========================================
+
+st.header("📦 Histórico elaboración")
+
+historico = pd.read_sql_query(
+    "SELECT * FROM elaboracion",
+    conn
+)
 
 st.dataframe(
-    stock,
+    historico,
     use_container_width=True
 )
 
 # ==========================================
-# KPIS
+# CONSUMOS ENOLOGICOS
 # ==========================================
 
-st.header("📊 Resumen")
+st.header("🧪 Consumos enológicos")
 
-c1, c2, c3 = st.columns(3)
-
-c1.metric(
-    "Productos",
-    len(stock)
+consumos = pd.read_sql_query(
+    "SELECT * FROM consumos_enologicos",
+    conn
 )
 
-c2.metric(
-    "Stock total",
-
-    f"{stock['stock_actual'].sum():,.1f}"
-
-)
-
-c3.metric(
-    "Valor stock",
-
-    f"{stock['coste_total'].sum():,.2f} €"
-
+st.dataframe(
+    consumos,
+    use_container_width=True
 )
 
 conn.close()
