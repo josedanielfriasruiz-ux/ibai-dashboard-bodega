@@ -14,13 +14,13 @@ st.set_page_config(
 )
 
 # ==========================================
-# TÍTULO
+# TITULO
 # ==========================================
 
 st.title("🍷 IBAI VITICULTORES — ERP Bodega")
 
 # ==========================================
-# SUBIR EXCEL MAESTRO
+# SUBIR EXCEL
 # ==========================================
 
 st.sidebar.header("📂 Excel maestro")
@@ -90,7 +90,7 @@ COL_IVA = "IVA (€)"
 COL_TOTAL = "Total (€)"
 
 # ==========================================
-# NUMÉRICOS
+# NUMERICOS
 # ==========================================
 
 for col in [COL_BASE, COL_IVA, COL_TOTAL]:
@@ -104,166 +104,6 @@ for col in [COL_BASE, COL_IVA, COL_TOTAL]:
         gastos[col],
         errors="coerce"
     ).fillna(0)
-
-# ==========================================
-# KPIs
-# ==========================================
-
-ventas = ingresos[COL_TOTAL].sum()
-
-gastos_total = gastos[COL_TOTAL].sum()
-
-ventas_base = ingresos[COL_BASE].sum()
-
-gastos_base = gastos[COL_BASE].sum()
-
-beneficio = ventas_base - gastos_base
-
-iva_rep = ingresos[COL_IVA].sum()
-
-iva_sop = gastos[COL_IVA].sum()
-
-resultado_iva = iva_rep - iva_sop
-
-# ==========================================
-# RESUMEN FINANCIERO
-# ==========================================
-
-st.header("📊 Resumen financiero")
-
-col1, col2, col3 = st.columns(3)
-
-col1.metric(
-    "Ventas Totales",
-    f"{ventas:,.2f} €"
-)
-
-col2.metric(
-    "Gastos Totales",
-    f"{gastos_total:,.2f} €"
-)
-
-col3.metric(
-    "Beneficio antes IVA",
-    f"{beneficio:,.2f} €"
-)
-
-col4, col5, col6 = st.columns(3)
-
-col4.metric(
-    "IVA Repercutido",
-    f"{iva_rep:,.2f} €"
-)
-
-col5.metric(
-    "IVA Soportado",
-    f"{iva_sop:,.2f} €"
-)
-
-col6.metric(
-    "Resultado IVA",
-    f"{resultado_iva:,.2f} €"
-)
-
-# ==========================================
-# RESUMEN TRIMESTRAL
-# ==========================================
-
-st.header("📅 Resumen trimestral")
-
-if (
-    "Trimestre" in ingresos.columns
-    and
-    "Trimestre" in gastos.columns
-):
-
-    resumen_ingresos = (
-        ingresos
-        .groupby("Trimestre")
-        .agg({
-            "Base Imponible": "sum",
-            "IVA (€)": "sum",
-            "Total (€)": "sum"
-        })
-        .reset_index()
-    )
-
-    resumen_gastos = (
-        gastos
-        .groupby("Trimestre")
-        .agg({
-            "Base Imponible": "sum",
-            "IVA (€)": "sum",
-            "Total (€)": "sum"
-        })
-        .reset_index()
-    )
-
-    resumen = pd.merge(
-        resumen_ingresos,
-        resumen_gastos,
-        on="Trimestre",
-        suffixes=("_Ingresos", "_Gastos")
-    )
-
-    resumen["Beneficio"] = (
-        resumen["Base Imponible_Ingresos"]
-        -
-        resumen["Base Imponible_Gastos"]
-    )
-
-    resumen["Resultado IVA"] = (
-        resumen["IVA (€)_Ingresos"]
-        -
-        resumen["IVA (€)_Gastos"]
-    )
-
-    st.dataframe(
-        resumen,
-        use_container_width=True
-    )
-
-    st.subheader("📈 Ventas trimestrales")
-
-    st.bar_chart(
-        resumen.set_index(
-            "Trimestre"
-        )["Total (€)_Ingresos"]
-    )
-
-    st.subheader("💸 Gastos trimestrales")
-
-    st.bar_chart(
-        resumen.set_index(
-            "Trimestre"
-        )["Total (€)_Gastos"]
-    )
-
-    st.subheader("💰 Beneficio trimestral")
-
-    st.line_chart(
-        resumen.set_index(
-            "Trimestre"
-        )["Beneficio"]
-    )
-
-# ==========================================
-# TABLAS
-# ==========================================
-
-st.subheader("🧾 Ingresos")
-
-st.dataframe(
-    ingresos,
-    use_container_width=True
-)
-
-st.subheader("💸 Gastos")
-
-st.dataframe(
-    gastos,
-    use_container_width=True
-)
 
 # ==========================================
 # DICCIONARIO PROVEEDORES
@@ -396,7 +236,7 @@ if pdf_file is not None:
             pass
 
     # ==========================================
-    # FACTURA
+    # NUMERO FACTURA
     # ==========================================
 
     factura_match = re.search(
@@ -531,10 +371,6 @@ if pdf_file is not None:
 
     else:
 
-        # ==========================================
-        # AÑADIR FACTURA
-        # ==========================================
-
         if st.button("➕ Añadir factura a gastos"):
 
             nueva_fila = pd.DataFrame({
@@ -569,62 +405,220 @@ if pdf_file is not None:
 
             })
 
-            gastos_actualizados = pd.concat(
+            gastos = pd.concat(
                 [gastos, nueva_fila],
                 ignore_index=True
             )
-
-            # ==========================================
-            # ACTUALIZAR DASHBOARD EN MEMORIA
-            # ==========================================
-
-            gastos = gastos_actualizados
 
             st.success(
                 "✅ Factura añadida correctamente"
             )
 
-            st.subheader("💸 Gastos actualizados")
+# ==========================================
+# KPIs GENERALES
+# ==========================================
 
-            st.dataframe(
-                gastos_actualizados,
-                use_container_width=True
-            )
+ventas = ingresos[COL_TOTAL].sum()
 
-            # ==========================================
-            # GENERAR EXCEL DESCARGABLE
-            # ==========================================
+gastos_total = gastos[COL_TOTAL].sum()
 
-            output = BytesIO()
+ventas_base = ingresos[COL_BASE].sum()
 
-            with pd.ExcelWriter(
-                output,
-                engine="openpyxl"
-            ) as writer:
+gastos_base = gastos[COL_BASE].sum()
 
-                ingresos.to_excel(
-                    writer,
-                    sheet_name="Ingresos",
-                    index=False
-                )
+beneficio = ventas_base - gastos_base
 
-                gastos_actualizados.to_excel(
-                    writer,
-                    sheet_name="Gastos",
-                    index=False
-                )
+iva_rep = ingresos[COL_IVA].sum()
 
-            st.download_button(
-                label="⬇️ Descargar Excel actualizado",
-                data=output.getvalue(),
-                file_name="Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+iva_sop = gastos[COL_IVA].sum()
 
-    # ==========================================
-    # TEXTO PDF
-    # ==========================================
+resultado_iva = iva_rep - iva_sop
 
-    with st.expander("📄 Ver texto detectado"):
+# ==========================================
+# RESUMEN FINANCIERO
+# ==========================================
 
-        st.text(texto[:5000])
+st.header("📊 Resumen financiero")
+
+c1, c2, c3 = st.columns(3)
+
+c1.metric(
+    "Ventas Totales",
+    f"{ventas:,.2f} €"
+)
+
+c2.metric(
+    "Gastos Totales",
+    f"{gastos_total:,.2f} €"
+)
+
+c3.metric(
+    "Beneficio",
+    f"{beneficio:,.2f} €"
+)
+
+c4, c5, c6 = st.columns(3)
+
+c4.metric(
+    "IVA Repercutido",
+    f"{iva_rep:,.2f} €"
+)
+
+c5.metric(
+    "IVA Soportado",
+    f"{iva_sop:,.2f} €"
+)
+
+c6.metric(
+    "Resultado IVA",
+    f"{resultado_iva:,.2f} €"
+)
+
+# ==========================================
+# RESUMEN TRIMESTRAL
+# ==========================================
+
+st.header("📅 Resumen trimestral")
+
+if (
+    "Trimestre" in ingresos.columns
+    and
+    "Trimestre" in gastos.columns
+):
+
+    resumen_ingresos = (
+        ingresos
+        .groupby("Trimestre")
+        .agg({
+            "Base Imponible": "sum",
+            "IVA (€)": "sum",
+            "Total (€)": "sum"
+        })
+        .reset_index()
+    )
+
+    resumen_ingresos.columns = [
+
+        "Trimestre",
+
+        "Base Ingresos",
+
+        "IVA Repercutido",
+
+        "Ventas Totales"
+
+    ]
+
+    resumen_gastos = (
+        gastos
+        .groupby("Trimestre")
+        .agg({
+            "Base Imponible": "sum",
+            "IVA (€)": "sum",
+            "Total (€)": "sum"
+        })
+        .reset_index()
+    )
+
+    resumen_gastos.columns = [
+
+        "Trimestre",
+
+        "Base Gastos",
+
+        "IVA Soportado",
+
+        "Gastos Totales"
+
+    ]
+
+    resumen = pd.merge(
+
+        resumen_ingresos,
+
+        resumen_gastos,
+
+        on="Trimestre",
+
+        how="outer"
+
+    ).fillna(0)
+
+    resumen["Beneficio"] = (
+
+        resumen["Base Ingresos"]
+
+        -
+
+        resumen["Base Gastos"]
+
+    )
+
+    resumen["Resultado IVA"] = (
+
+        resumen["IVA Repercutido"]
+
+        -
+
+        resumen["IVA Soportado"]
+
+    )
+
+    st.dataframe(
+        resumen,
+        use_container_width=True
+    )
+
+# ==========================================
+# TABLAS
+# ==========================================
+
+st.subheader("🧾 Ingresos")
+
+st.dataframe(
+    ingresos,
+    use_container_width=True
+)
+
+st.subheader("💸 Gastos")
+
+st.dataframe(
+    gastos,
+    use_container_width=True
+)
+
+# ==========================================
+# EXPORTAR EXCEL
+# ==========================================
+
+output = BytesIO()
+
+with pd.ExcelWriter(
+    output,
+    engine="openpyxl"
+) as writer:
+
+    ingresos.to_excel(
+        writer,
+        sheet_name="Ingresos",
+        index=False
+    )
+
+    gastos.to_excel(
+        writer,
+        sheet_name="Gastos",
+        index=False
+    )
+
+    resumen.to_excel(
+        writer,
+        sheet_name="Resumen_Trimestral",
+        index=False
+    )
+
+st.download_button(
+    label="⬇️ Descargar Excel actualizado",
+    data=output.getvalue(),
+    file_name="Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
