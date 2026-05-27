@@ -3,6 +3,7 @@ import pandas as pd
 import pdfplumber
 import re
 import os
+from openpyxl import load_workbook
 
 # ==========================================
 # CONFIGURACIÓN
@@ -20,7 +21,7 @@ st.set_page_config(
 st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
 
 # ==========================================
-# EXCEL
+# ARCHIVO EXCEL
 # ==========================================
 
 excel = "Dashboard_Bodega_Completo_2026.xlsx"
@@ -61,7 +62,7 @@ iva_rep = ingresos["IVA"].sum()
 iva_sop = gastos["IVA"].sum()
 
 # ==========================================
-# MÉTRICAS PRINCIPALES
+# MÉTRICAS
 # ==========================================
 
 st.header("📊 Resumen financiero")
@@ -172,7 +173,7 @@ st.dataframe(
 )
 
 # ==========================================
-# SUBIR FACTURAS PDF
+# SUBIR FACTURA PDF
 # ==========================================
 
 st.header("📄 Subir factura PDF")
@@ -184,14 +185,21 @@ pdf_file = st.file_uploader(
 
 if pdf_file is not None:
 
-    # Guardar temporalmente
+    # ==========================================
+    # GUARDAR PDF TEMPORAL
+    # ==========================================
 
     with open(pdf_file.name, "wb") as f:
-        f.write(pdf_file.getbuffer())
+
+        f.write(
+            pdf_file.getbuffer()
+        )
 
     texto = ""
 
-    # Leer PDF
+    # ==========================================
+    # LEER PDF
+    # ==========================================
 
     with pdfplumber.open(pdf_file.name) as pdf:
 
@@ -200,6 +208,7 @@ if pdf_file is not None:
             contenido = pagina.extract_text()
 
             if contenido:
+
                 texto += contenido
 
     st.success("✅ PDF leído correctamente")
@@ -233,7 +242,7 @@ if pdf_file is not None:
     )
 
     # ==========================================
-    # RESULTADOS
+    # DATOS EXTRAÍDOS
     # ==========================================
 
     numero_factura = (
@@ -245,19 +254,19 @@ if pdf_file is not None:
     base_imponible = (
         base.group(1)
         if base
-        else "No detectado"
+        else "0"
     )
 
     cuota_iva = (
         iva.group(1)
         if iva
-        else "No detectado"
+        else "0"
     )
 
     total_factura = (
         total.group(1)
         if total
-        else "No detectado"
+        else "0"
     )
 
     # ==========================================
@@ -287,9 +296,108 @@ if pdf_file is not None:
     )
 
     # ==========================================
-    # MOSTRAR TEXTO EXTRAÍDO
+    # BOTÓN GUARDAR
     # ==========================================
 
-    with st.expander("Ver texto PDF"):
+    if st.button("➕ Añadir factura al Excel"):
 
-        st.text(texto[:5000])
+        try:
+
+            # -------------------------
+            # CONVERTIR NÚMEROS
+            # -------------------------
+
+            base_float = float(
+                base_imponible
+                .replace(".", "")
+                .replace(",", ".")
+            )
+
+            iva_float = float(
+                cuota_iva
+                .replace(".", "")
+                .replace(",", ".")
+            )
+
+            total_float = float(
+                total_factura
+                .replace(".", "")
+                .replace(",", ".")
+            )
+
+            # -------------------------
+            # NUEVA FILA
+            # -------------------------
+
+            nueva_fila = {
+
+                "Fecha": pd.Timestamp.today().date(),
+
+                "Trimestre": "2T",
+
+                "Proveedor": "PDF AUTO",
+
+                "Categoria": "Pendiente clasificar",
+
+                "Base": base_float,
+
+                "IVA": iva_float,
+
+                "Total": total_float
+
+            }
+
+            # -------------------------
+            # AÑADIR A GASTOS
+            # -------------------------
+
+            gastos = pd.concat(
+                [
+                    gastos,
+                    pd.DataFrame([nueva_fila])
+                ],
+                ignore_index=True
+            )
+
+            # -------------------------
+            # GUARDAR EXCEL
+            # -------------------------
+
+            with pd.ExcelWriter(
+                excel,
+                engine="openpyxl",
+                mode="a",
+                if_sheet_exists="replace"
+            ) as writer:
+
+                ingresos.to_excel(
+                    writer,
+                    sheet_name="Ingresos",
+                    index=False
+                )
+
+                gastos.to_excel(
+                    writer,
+                    sheet_name="Gastos",
+                    index=False
+                )
+
+            st.success(
+                "✅ Factura añadida automáticamente al Excel"
+            )
+
+        except Exception as e:
+
+            st.error(
+                f"❌ Error guardando factura: {e}"
+            )
+
+    # ==========================================
+    # TEXTO EXTRAÍDO
+    # ==========================================
+
+    with st.expander("📄 Ver texto extraído del PDF"):
+
+        st.text(
+            texto[:5000]
+        )
