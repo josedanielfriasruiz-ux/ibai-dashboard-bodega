@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# ARCHIVO EXCEL
+# EXCEL
 # ==========================================
 
 excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
@@ -39,35 +39,34 @@ ingresos.columns = ingresos.columns.str.strip()
 gastos.columns = gastos.columns.str.strip()
 
 # ==========================================
-# COLUMNAS REALES
+# COLUMNAS
 # ==========================================
 
-# INGRESOS
-COL_TOTAL_INGRESOS = "Total (€)"
-COL_IVA_INGRESOS = "IVA (€)"
+COL_TOTAL = "Total (€)"
+COL_IVA = "IVA (€)"
 
-# GASTOS
-COL_TOTAL_GASTOS = "Total (€)"
-COL_IVA_GASTOS = "IVA (€)"
+# ==========================================
+# LIMPIAR FILAS VACÍAS
+# ==========================================
+
+ingresos = ingresos.dropna(
+    subset=[COL_TOTAL]
+)
+
+gastos = gastos.dropna(
+    subset=[COL_TOTAL]
+)
 
 # ==========================================
 # CONVERTIR A NUMÉRICO
 # ==========================================
 
-for col in [
-    COL_TOTAL_INGRESOS,
-    COL_IVA_INGRESOS
-]:
+for col in [COL_TOTAL, COL_IVA]:
 
     ingresos[col] = pd.to_numeric(
         ingresos[col],
         errors="coerce"
     ).fillna(0)
-
-for col in [
-    COL_TOTAL_GASTOS,
-    COL_IVA_GASTOS
-]:
 
     gastos[col] = pd.to_numeric(
         gastos[col],
@@ -75,30 +74,54 @@ for col in [
     ).fillna(0)
 
 # ==========================================
+# ELIMINAR TOTALES Y RESÚMENES
+# ==========================================
+
+if "Cliente" in ingresos.columns:
+
+    ingresos = ingresos[
+        ~ingresos["Cliente"]
+        .astype(str)
+        .str.contains(
+            "TOTAL|RESUMEN",
+            case=False,
+            na=False
+        )
+    ]
+
+if "Proveedor" in gastos.columns:
+
+    gastos = gastos[
+        ~gastos["Proveedor"]
+        .astype(str)
+        .str.contains(
+            "TOTAL|RESUMEN",
+            case=False,
+            na=False
+        )
+    ]
+
+# ==========================================
 # KPIs
 # ==========================================
 
-ventas = ingresos[COL_TOTAL_INGRESOS].sum()
+ventas = ingresos[COL_TOTAL].sum()
 
-gastos_total = gastos[COL_TOTAL_GASTOS].sum()
+gastos_total = gastos[COL_TOTAL].sum()
 
 beneficio = ventas - gastos_total
 
-iva_rep = ingresos[COL_IVA_INGRESOS].sum()
+iva_rep = ingresos[COL_IVA].sum()
 
-iva_sop = gastos[COL_IVA_GASTOS].sum()
+iva_sop = gastos[COL_IVA].sum()
 
 resultado_iva = iva_rep - iva_sop
 
 # ==========================================
-# TÍTULO
+# DASHBOARD
 # ==========================================
 
 st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
-
-# ==========================================
-# RESUMEN FINANCIERO
-# ==========================================
 
 st.header("📊 Resumen financiero")
 
@@ -137,7 +160,7 @@ col6.metric(
 )
 
 # ==========================================
-# VENTAS POR CLIENTE
+# CLIENTES
 # ==========================================
 
 if "Cliente" in ingresos.columns:
@@ -146,7 +169,7 @@ if "Cliente" in ingresos.columns:
 
     clientes = (
         ingresos
-        .groupby("Cliente")[COL_TOTAL_INGRESOS]
+        .groupby("Cliente")[COL_TOTAL]
         .sum()
         .sort_values(ascending=False)
     )
@@ -154,7 +177,7 @@ if "Cliente" in ingresos.columns:
     st.bar_chart(clientes)
 
 # ==========================================
-# GASTOS POR CATEGORÍA
+# CATEGORÍAS
 # ==========================================
 
 if "Categoría" in gastos.columns:
@@ -163,7 +186,7 @@ if "Categoría" in gastos.columns:
 
     categorias = (
         gastos
-        .groupby("Categoría")[COL_TOTAL_GASTOS]
+        .groupby("Categoría")[COL_TOTAL]
         .sum()
         .sort_values(ascending=False)
     )
@@ -189,7 +212,7 @@ st.dataframe(
 )
 
 # ==========================================
-# SUBIR PDF
+# PDF
 # ==========================================
 
 st.header("📄 Subir factura PDF")
@@ -214,7 +237,5 @@ if pdf_file is not None:
                 texto += contenido
 
     st.success("✅ PDF leído correctamente")
-
-    st.subheader("📄 Texto detectado")
 
     st.text(texto[:5000])
