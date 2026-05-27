@@ -106,6 +106,38 @@ for col in [COL_BASE, COL_IVA, COL_TOTAL]:
     ).fillna(0)
 
 # ==========================================
+# FECHAS
+# ==========================================
+
+ingresos["Fecha"] = pd.to_datetime(
+    ingresos["Fecha"],
+    errors="coerce"
+)
+
+gastos["Fecha"] = pd.to_datetime(
+    gastos["Fecha"],
+    errors="coerce"
+)
+
+# ==========================================
+# CREAR TRIMESTRES
+# ==========================================
+
+ingresos["Trimestre"] = (
+    ingresos["Fecha"]
+    .dt.quarter
+    .astype(str)
+    + "T"
+)
+
+gastos["Trimestre"] = (
+    gastos["Fecha"]
+    .dt.quarter
+    .astype(str)
+    + "T"
+)
+
+# ==========================================
 # DICCIONARIO PROVEEDORES
 # ==========================================
 
@@ -478,124 +510,150 @@ resumen_excel = pd.DataFrame({
 
 })
 
-if (
-    "Trimestre" in ingresos.columns
-    and
-    "Trimestre" in gastos.columns
-):
+# ==========================================
+# INGRESOS TRIMESTRALES
+# ==========================================
 
-    ingresos_trim = (
-        ingresos
-        .groupby("Trimestre")
-        .agg({
-            "Base Imponible": "sum",
-            "IVA (€)": "sum",
-            "Total (€)": "sum"
-        })
-        .reset_index()
-    )
+ingresos_trim = (
+    ingresos
+    .groupby("Trimestre")
+    .agg({
+        "Base Imponible": "sum",
+        "IVA (€)": "sum",
+        "Total (€)": "sum"
+    })
+    .reset_index()
+)
 
-    gastos_trim = (
-        gastos
-        .groupby("Trimestre")
-        .agg({
-            "Base Imponible": "sum",
-            "IVA (€)": "sum",
-            "Total (€)": "sum"
-        })
-        .reset_index()
-    )
+# ==========================================
+# GASTOS TRIMESTRALES
+# ==========================================
 
-    resumen_excel = resumen_excel.merge(
+gastos_trim = (
+    gastos
+    .groupby("Trimestre")
+    .agg({
+        "Base Imponible": "sum",
+        "IVA (€)": "sum",
+        "Total (€)": "sum"
+    })
+    .reset_index()
+)
 
-        ingresos_trim[
-            [
-                "Trimestre",
-                "Base Imponible",
-                "IVA (€)",
-                "Total (€)"
-            ]
-        ],
+# ==========================================
+# UNIR INGRESOS
+# ==========================================
 
-        on="Trimestre",
+resumen_excel = resumen_excel.merge(
 
-        how="left"
+    ingresos_trim[
+        [
+            "Trimestre",
+            "Base Imponible",
+            "IVA (€)",
+            "Total (€)"
+        ]
+    ],
 
-    )
+    on="Trimestre",
 
-    resumen_excel.columns = [
+    how="left"
 
-        "Trimestre",
+)
 
-        "Base Ingresos",
+resumen_excel.columns = [
 
-        "IVA Repercutido",
+    "Trimestre",
 
-        "Ventas Totales"
+    "Base Ingresos",
 
-    ]
+    "IVA Repercutido",
 
-    resumen_excel = resumen_excel.merge(
+    "Ventas Totales"
 
-        gastos_trim[
-            [
-                "Trimestre",
-                "Base Imponible",
-                "IVA (€)",
-                "Total (€)"
-            ]
-        ],
+]
 
-        on="Trimestre",
+# ==========================================
+# UNIR GASTOS
+# ==========================================
 
-        how="left"
+resumen_excel = resumen_excel.merge(
 
-    )
+    gastos_trim[
+        [
+            "Trimestre",
+            "Base Imponible",
+            "IVA (€)",
+            "Total (€)"
+        ]
+    ],
 
-    resumen_excel.columns = [
+    on="Trimestre",
 
-        "Trimestre",
+    how="left"
 
-        "Base Ingresos",
+)
 
-        "IVA Repercutido",
+resumen_excel.columns = [
 
-        "Ventas Totales",
+    "Trimestre",
 
-        "Base Gastos",
+    "Base Ingresos",
 
-        "IVA Soportado",
+    "IVA Repercutido",
 
-        "Gastos Totales"
+    "Ventas Totales",
 
-    ]
+    "Base Gastos",
 
-    resumen_excel = resumen_excel.fillna(0)
+    "IVA Soportado",
 
-    resumen_excel["Beneficio"] = (
+    "Gastos Totales"
 
-        resumen_excel["Base Ingresos"]
+]
 
-        -
+# ==========================================
+# RELLENAR VACIOS
+# ==========================================
 
-        resumen_excel["Base Gastos"]
+resumen_excel = resumen_excel.fillna(0)
 
-    )
+# ==========================================
+# BENEFICIO
+# ==========================================
 
-    resumen_excel["Resultado IVA"] = (
+resumen_excel["Beneficio"] = (
 
-        resumen_excel["IVA Repercutido"]
+    resumen_excel["Base Ingresos"]
 
-        -
+    -
 
-        resumen_excel["IVA Soportado"]
+    resumen_excel["Base Gastos"]
 
-    )
+)
 
-    st.dataframe(
-        resumen_excel,
-        use_container_width=True
-    )
+# ==========================================
+# RESULTADO IVA
+# ==========================================
+
+resumen_excel["Resultado IVA"] = (
+
+    resumen_excel["IVA Repercutido"]
+
+    -
+
+    resumen_excel["IVA Soportado"]
+
+)
+
+# ==========================================
+# MOSTRAR RESUMEN
+# ==========================================
+
+st.dataframe(
+    resumen_excel,
+    use_container_width=True
+)
 
 # ==========================================
 # TABLAS
