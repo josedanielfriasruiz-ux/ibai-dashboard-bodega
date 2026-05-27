@@ -24,7 +24,7 @@ st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
 # ARCHIVO EXCEL
 # ==========================================
 
-excel = "Dashboard_Bodega_Completo_2026.xlsx"
+excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
 
 # ==========================================
 # CARGAR DATOS
