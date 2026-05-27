@@ -314,21 +314,13 @@ if pdf_file is not None:
     st.subheader("📋 Datos detectados")
 
     st.write("Proveedor:", proveedor_detectado)
-
     st.write("Categoría:", categoria_detectada)
-
     st.write("Concepto:", concepto_detectado)
-
     st.write("Tipo:", tipo_detectado)
-
     st.write("Factura:", numero_factura)
-
     st.write("Fecha:", fecha_factura)
-
     st.write("Base:", base)
-
     st.write("IVA:", iva)
-
     st.write("Total:", total)
 
     # ==========================================
