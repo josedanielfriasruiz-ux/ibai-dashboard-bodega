@@ -22,42 +22,6 @@ conn = sqlite3.connect("bodega.db")
 cursor = conn.cursor()
 
 # ==========================================
-# TABLA
-# ==========================================
-
-cursor.execute("""
-
-CREATE TABLE IF NOT EXISTS elaboracion (
-
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-    fecha TEXT,
-
-    deposito TEXT,
-
-    fase TEXT,
-
-    dato1 REAL,
-    dato2 REAL,
-    dato3 REAL,
-    dato4 REAL,
-    dato5 REAL,
-    dato6 REAL,
-    dato7 REAL,
-    dato8 REAL,
-    dato9 REAL,
-    dato10 REAL,
-
-    texto1 TEXT,
-    texto2 TEXT
-
-)
-
-""")
-
-conn.commit()
-
-# ==========================================
 # DEPOSITOS
 # ==========================================
 
@@ -67,6 +31,17 @@ depositos = pd.read_sql_query(
 )
 
 lista_depositos = depositos["nombre"].tolist()
+
+# ==========================================
+# PRODUCTOS ENOLOGICOS
+# ==========================================
+
+productos = pd.read_sql_query(
+    "SELECT * FROM enologicos",
+    conn
+)
+
+lista_productos = productos["producto"].unique().tolist()
 
 # ==========================================
 # FASE
@@ -106,6 +81,40 @@ deposito = st.selectbox(
 )
 
 # ==========================================
+# PRODUCTO ENOLOGICO
+# ==========================================
+
+st.header("🧪 Producto enológico")
+
+producto_enologico = st.selectbox(
+
+    "Producto",
+
+    ["Ninguno"] + lista_productos
+
+)
+
+dosis = st.number_input(
+    "Dosis",
+    min_value=0.0
+)
+
+unidad_dosis = st.selectbox(
+
+    "Unidad",
+
+    [
+
+        "g/hL",
+        "mL/hL",
+        "mg/L",
+        "g/L"
+
+    ]
+
+)
+
+# ==========================================
 # RECEPCION
 # ==========================================
 
@@ -137,11 +146,12 @@ if fase == "Recepción":
             deposito,
             fase,
             dato1,
+            dato2,
             texto1
 
         )
 
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
 
         """, (
 
@@ -149,9 +159,38 @@ if fase == "Recepción":
             deposito,
             fase,
             gap,
+            sulfuroso,
             origen
 
         ))
+
+        if producto_enologico != "Ninguno":
+
+            cursor.execute("""
+
+            INSERT INTO consumos_enologicos (
+
+                fecha,
+                deposito,
+                fase,
+                producto,
+                dosis,
+                unidad
+
+            )
+
+            VALUES (?, ?, ?, ?, ?, ?)
+
+            """, (
+
+                str(fecha),
+                deposito,
+                fase,
+                producto_enologico,
+                dosis,
+                unidad_dosis
+
+            ))
 
         conn.commit()
 
@@ -245,232 +284,38 @@ elif fase == "Fermentación alcohólica":
 
         ))
 
+        if producto_enologico != "Ninguno":
+
+            cursor.execute("""
+
+            INSERT INTO consumos_enologicos (
+
+                fecha,
+                deposito,
+                fase,
+                producto,
+                dosis,
+                unidad
+
+            )
+
+            VALUES (?, ?, ?, ?, ?, ?)
+
+            """, (
+
+                str(fecha),
+                deposito,
+                fase,
+                producto_enologico,
+                dosis,
+                unidad_dosis
+
+            ))
+
         conn.commit()
 
         st.success(
             "✅ FA guardada"
-        )
-
-# ==========================================
-# FERMENTACION MALOLACTICA
-# ==========================================
-
-elif fase == "Fermentación maloláctica":
-
-    malico = st.number_input(
-        "Ácido málico"
-    )
-
-    acetico = st.number_input(
-        "Ácido acético"
-    )
-
-    sulfuroso_libre = st.number_input(
-        "Sulfuroso libre"
-    )
-
-    sulfuroso_total = st.number_input(
-        "Sulfuroso total"
-    )
-
-    guardar = st.button(
-        "Guardar FML"
-    )
-
-    if guardar:
-
-        cursor.execute("""
-
-        INSERT INTO elaboracion (
-
-            fecha,
-            deposito,
-            fase,
-            dato1,
-            dato2,
-            dato3,
-            dato4
-
-        )
-
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            str(fecha),
-            deposito,
-            fase,
-            malico,
-            acetico,
-            sulfuroso_libre,
-            sulfuroso_total
-
-        ))
-
-        conn.commit()
-
-        st.success(
-            "✅ FML guardada"
-        )
-
-# ==========================================
-# FINAL FML
-# ==========================================
-
-elif fase == "Final fermentación maloláctica":
-
-    alcohol = st.number_input(
-        "Grado alcohólico"
-    )
-
-    ph = st.number_input(
-        "pH"
-    )
-
-    at = st.number_input(
-        "Acidez total"
-    )
-
-    acetico = st.number_input(
-        "Ácido acético"
-    )
-
-    sulfuroso_libre = st.number_input(
-        "Sulfuroso libre"
-    )
-
-    sulfuroso_total = st.number_input(
-        "Sulfuroso total"
-    )
-
-    intensidad = st.number_input(
-        "Intensidad color"
-    )
-
-    ipt = st.number_input(
-        "IPT"
-    )
-
-    malico = st.number_input(
-        "Málico"
-    )
-
-    azucares = st.number_input(
-        "Azúcares"
-    )
-
-    guardar = st.button(
-        "Guardar final FML"
-    )
-
-    if guardar:
-
-        cursor.execute("""
-
-        INSERT INTO elaboracion (
-
-            fecha,
-            deposito,
-            fase,
-            dato1,
-            dato2,
-            dato3,
-            dato4,
-            dato5,
-            dato6,
-            dato7,
-            dato8,
-            dato9,
-            dato10
-
-        )
-
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            str(fecha),
-            deposito,
-            fase,
-            alcohol,
-            ph,
-            at,
-            acetico,
-            sulfuroso_libre,
-            sulfuroso_total,
-            intensidad,
-            ipt,
-            malico,
-            azucares
-
-        ))
-
-        conn.commit()
-
-        st.success(
-            "✅ Final FML guardado"
-        )
-
-# ==========================================
-# CRIANZA
-# ==========================================
-
-elif fase == "Crianza":
-
-    acetico = st.number_input(
-        "Ácido acético"
-    )
-
-    sulfuroso_libre = st.number_input(
-        "Sulfuroso libre"
-    )
-
-    sulfuroso_total = st.number_input(
-        "Sulfuroso total"
-    )
-
-    brett = st.number_input(
-        "Brett"
-    )
-
-    guardar = st.button(
-        "Guardar crianza"
-    )
-
-    if guardar:
-
-        cursor.execute("""
-
-        INSERT INTO elaboracion (
-
-            fecha,
-            deposito,
-            fase,
-            dato1,
-            dato2,
-            dato3,
-            dato4
-
-        )
-
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            str(fecha),
-            deposito,
-            fase,
-            acetico,
-            sulfuroso_libre,
-            sulfuroso_total,
-            brett
-
-        ))
-
-        conn.commit()
-
-        st.success(
-            "✅ Crianza guardada"
         )
 
 # ==========================================
@@ -486,6 +331,22 @@ historico = pd.read_sql_query(
 
 st.dataframe(
     historico,
+    use_container_width=True
+)
+
+# ==========================================
+# CONSUMOS ENOLOGICOS
+# ==========================================
+
+st.header("🧪 Consumos enológicos")
+
+consumos = pd.read_sql_query(
+    "SELECT * FROM consumos_enologicos",
+    conn
+)
+
+st.dataframe(
+    consumos,
     use_container_width=True
 )
 
