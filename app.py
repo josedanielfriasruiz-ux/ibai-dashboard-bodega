@@ -3,7 +3,7 @@ import pandas as pd
 import pdfplumber
 
 # ==========================================
-# CONFIG
+# CONFIGURACIÓN
 # ==========================================
 
 st.set_page_config(
@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# EXCEL
+# ARCHIVO EXCEL
 # ==========================================
 
 excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
@@ -39,14 +39,14 @@ ingresos.columns = ingresos.columns.str.strip()
 gastos.columns = gastos.columns.str.strip()
 
 # ==========================================
-# COLUMNAS
+# NOMBRES COLUMNAS
 # ==========================================
 
 COL_TOTAL = "Total (€)"
 COL_IVA = "IVA (€)"
 
 # ==========================================
-# LIMPIAR FILAS VACÍAS
+# ELIMINAR FILAS VACÍAS
 # ==========================================
 
 ingresos = ingresos.dropna(
@@ -58,15 +58,29 @@ gastos = gastos.dropna(
 )
 
 # ==========================================
-# CONVERTIR A NUMÉRICO
+# LIMPIAR NÚMEROS EUROPEOS
 # ==========================================
 
 for col in [COL_TOTAL, COL_IVA]:
+
+    ingresos[col] = (
+        ingresos[col]
+        .astype(str)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+    )
 
     ingresos[col] = pd.to_numeric(
         ingresos[col],
         errors="coerce"
     ).fillna(0)
+
+    gastos[col] = (
+        gastos[col]
+        .astype(str)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+    )
 
     gastos[col] = pd.to_numeric(
         gastos[col],
@@ -74,7 +88,7 @@ for col in [COL_TOTAL, COL_IVA]:
     ).fillna(0)
 
 # ==========================================
-# ELIMINAR TOTALES Y RESÚMENES
+# ELIMINAR RESÚMENES
 # ==========================================
 
 if "Cliente" in ingresos.columns:
@@ -118,10 +132,14 @@ iva_sop = gastos[COL_IVA].sum()
 resultado_iva = iva_rep - iva_sop
 
 # ==========================================
-# DASHBOARD
+# TÍTULO
 # ==========================================
 
 st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
+
+# ==========================================
+# RESUMEN FINANCIERO
+# ==========================================
 
 st.header("📊 Resumen financiero")
 
@@ -160,7 +178,7 @@ col6.metric(
 )
 
 # ==========================================
-# CLIENTES
+# VENTAS POR CLIENTE
 # ==========================================
 
 if "Cliente" in ingresos.columns:
@@ -177,7 +195,7 @@ if "Cliente" in ingresos.columns:
     st.bar_chart(clientes)
 
 # ==========================================
-# CATEGORÍAS
+# GASTOS POR CATEGORÍA
 # ==========================================
 
 if "Categoría" in gastos.columns:
@@ -212,7 +230,7 @@ st.dataframe(
 )
 
 # ==========================================
-# PDF
+# SUBIR FACTURAS PDF
 # ==========================================
 
 st.header("📄 Subir factura PDF")
@@ -237,5 +255,7 @@ if pdf_file is not None:
                 texto += contenido
 
     st.success("✅ PDF leído correctamente")
+
+    st.subheader("📄 Texto detectado")
 
     st.text(texto[:5000])
