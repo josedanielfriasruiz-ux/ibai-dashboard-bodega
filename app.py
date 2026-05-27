@@ -3,7 +3,7 @@ import pandas as pd
 import pdfplumber
 
 # ==========================================
-# CONFIGURACIÓN
+# CONFIG
 # ==========================================
 
 st.set_page_config(
@@ -12,13 +12,13 @@ st.set_page_config(
 )
 
 # ==========================================
-# ARCHIVO EXCEL
+# EXCEL
 # ==========================================
 
 excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
 
 # ==========================================
-# CARGAR DATOS
+# LEER EXCEL
 # ==========================================
 
 ingresos = pd.read_excel(
@@ -39,81 +39,47 @@ ingresos.columns = ingresos.columns.str.strip()
 gastos.columns = gastos.columns.str.strip()
 
 # ==========================================
-# NOMBRES COLUMNAS
+# COLUMNAS
 # ==========================================
 
 COL_TOTAL = "Total (€)"
 COL_IVA = "IVA (€)"
 
 # ==========================================
+# CONVERTIR NUMÉRICOS
+# ==========================================
+
+ingresos[COL_TOTAL] = pd.to_numeric(
+    ingresos[COL_TOTAL],
+    errors="coerce"
+).fillna(0)
+
+ingresos[COL_IVA] = pd.to_numeric(
+    ingresos[COL_IVA],
+    errors="coerce"
+).fillna(0)
+
+gastos[COL_TOTAL] = pd.to_numeric(
+    gastos[COL_TOTAL],
+    errors="coerce"
+).fillna(0)
+
+gastos[COL_IVA] = pd.to_numeric(
+    gastos[COL_IVA],
+    errors="coerce"
+).fillna(0)
+
+# ==========================================
 # ELIMINAR FILAS VACÍAS
 # ==========================================
 
-ingresos = ingresos.dropna(
-    subset=[COL_TOTAL]
-)
+ingresos = ingresos[
+    ingresos[COL_TOTAL] > 0
+]
 
-gastos = gastos.dropna(
-    subset=[COL_TOTAL]
-)
-
-# ==========================================
-# LIMPIAR NÚMEROS EUROPEOS
-# ==========================================
-
-for col in [COL_TOTAL, COL_IVA]:
-
-    ingresos[col] = (
-        ingresos[col]
-        .astype(str)
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False)
-    )
-
-    ingresos[col] = pd.to_numeric(
-        ingresos[col],
-        errors="coerce"
-    ).fillna(0)
-
-    gastos[col] = (
-        gastos[col]
-        .astype(str)
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False)
-    )
-
-    gastos[col] = pd.to_numeric(
-        gastos[col],
-        errors="coerce"
-    ).fillna(0)
-
-# ==========================================
-# ELIMINAR RESÚMENES
-# ==========================================
-
-if "Cliente" in ingresos.columns:
-
-    ingresos = ingresos[
-        ~ingresos["Cliente"]
-        .astype(str)
-        .str.contains(
-            "TOTAL|RESUMEN",
-            case=False,
-            na=False
-        )
-    ]
-
-if "Proveedor" in gastos.columns:
-
-    gastos = gastos[
-        ~gastos["Proveedor"]
-        .astype(str)
-        .str.contains(
-            "TOTAL|RESUMEN",
-            case=False,
-            na=False
-        )
-    ]
+gastos = gastos[
+    gastos[COL_TOTAL] > 0
+]
 
 # ==========================================
 # KPIs
@@ -132,14 +98,10 @@ iva_sop = gastos[COL_IVA].sum()
 resultado_iva = iva_rep - iva_sop
 
 # ==========================================
-# TÍTULO
+# DASHBOARD
 # ==========================================
 
 st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
-
-# ==========================================
-# RESUMEN FINANCIERO
-# ==========================================
 
 st.header("📊 Resumen financiero")
 
@@ -178,7 +140,7 @@ col6.metric(
 )
 
 # ==========================================
-# VENTAS POR CLIENTE
+# CLIENTES
 # ==========================================
 
 if "Cliente" in ingresos.columns:
@@ -195,7 +157,7 @@ if "Cliente" in ingresos.columns:
     st.bar_chart(clientes)
 
 # ==========================================
-# GASTOS POR CATEGORÍA
+# CATEGORÍAS
 # ==========================================
 
 if "Categoría" in gastos.columns:
@@ -230,7 +192,7 @@ st.dataframe(
 )
 
 # ==========================================
-# SUBIR FACTURAS PDF
+# SUBIR PDF
 # ==========================================
 
 st.header("📄 Subir factura PDF")
