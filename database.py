@@ -1,7 +1,7 @@
 import sqlite3
 
 # ==========================================
-# CONECTAR BASE DATOS
+# CONEXION
 # ==========================================
 
 conn = sqlite3.connect("bodega.db")
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS depositos (
 
     nombre TEXT,
 
-    capacidad_l INTEGER,
+    capacidad_l REAL,
 
     tipo TEXT,
 
@@ -81,6 +81,116 @@ CREATE TABLE IF NOT EXISTS movimientos (
 """)
 
 # ==========================================
+# TABLA STOCK SECO
+# ==========================================
+
+cursor.execute("""
+
+CREATE TABLE IF NOT EXISTS stock_seco (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    producto TEXT,
+
+    cantidad REAL,
+
+    unidad TEXT
+
+)
+
+""")
+
+# ==========================================
+# TABLA PRODUCTOS ENOLOGICOS
+# ==========================================
+
+cursor.execute("""
+
+CREATE TABLE IF NOT EXISTS enologicos (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    fecha TEXT,
+
+    producto TEXT,
+
+    tipo TEXT,
+
+    proveedor TEXT,
+
+    lote_proveedor TEXT,
+
+    cantidad REAL,
+
+    unidad TEXT,
+
+    coste REAL
+
+)
+
+""")
+
+# ==========================================
+# TABLA ELABORACION
+# ==========================================
+
+cursor.execute("""
+
+CREATE TABLE IF NOT EXISTS elaboracion (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    fecha TEXT,
+
+    deposito TEXT,
+
+    fase TEXT,
+
+    dato1 REAL,
+    dato2 REAL,
+    dato3 REAL,
+    dato4 REAL,
+    dato5 REAL,
+    dato6 REAL,
+    dato7 REAL,
+    dato8 REAL,
+    dato9 REAL,
+    dato10 REAL,
+
+    texto1 TEXT,
+    texto2 TEXT
+
+)
+
+""")
+
+# ==========================================
+# TABLA CONSUMOS ENOLOGICOS
+# ==========================================
+
+cursor.execute("""
+
+CREATE TABLE IF NOT EXISTS consumos_enologicos (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    fecha TEXT,
+
+    deposito TEXT,
+
+    fase TEXT,
+
+    producto TEXT,
+
+    dosis REAL,
+
+    unidad TEXT
+
+)
+
+""")
+
+# ==========================================
 # GUARDAR
 # ==========================================
 
@@ -88,4 +198,4 @@ conn.commit()
 
 conn.close()
 
-print("✅ Base de datos creada correctamente")
+print("✅ Base datos creada")
