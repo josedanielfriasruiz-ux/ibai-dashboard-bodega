@@ -478,6 +478,8 @@ c6.metric(
 # RESUMEN TRIMESTRAL
 # ==========================================
 
+resumen = pd.DataFrame()
+
 st.header("📅 Resumen trimestral")
 
 if (
@@ -498,15 +500,10 @@ if (
     )
 
     resumen_ingresos.columns = [
-
         "Trimestre",
-
         "Base Ingresos",
-
         "IVA Repercutido",
-
         "Ventas Totales"
-
     ]
 
     resumen_gastos = (
@@ -521,47 +518,29 @@ if (
     )
 
     resumen_gastos.columns = [
-
         "Trimestre",
-
         "Base Gastos",
-
         "IVA Soportado",
-
         "Gastos Totales"
-
     ]
 
     resumen = pd.merge(
-
         resumen_ingresos,
-
         resumen_gastos,
-
         on="Trimestre",
-
         how="outer"
-
     ).fillna(0)
 
     resumen["Beneficio"] = (
-
         resumen["Base Ingresos"]
-
         -
-
         resumen["Base Gastos"]
-
     )
 
     resumen["Resultado IVA"] = (
-
         resumen["IVA Repercutido"]
-
         -
-
         resumen["IVA Soportado"]
-
     )
 
     st.dataframe(
@@ -610,11 +589,13 @@ with pd.ExcelWriter(
         index=False
     )
 
-    resumen.to_excel(
-        writer,
-        sheet_name="Resumen_Trimestral",
-        index=False
-    )
+    if not resumen.empty:
+
+        resumen.to_excel(
+            writer,
+            sheet_name="Resumen_Trimestral",
+            index=False
+        )
 
 st.download_button(
     label="⬇️ Descargar Excel actualizado",
