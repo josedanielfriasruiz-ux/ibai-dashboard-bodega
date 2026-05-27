@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import pdfplumber
+import re
 
 # ==========================================
 # CONFIG
@@ -12,7 +13,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# ARCHIVO EXCEL
+# EXCEL
 # ==========================================
 
 excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
@@ -85,7 +86,7 @@ for col in [COL_BASE, COL_IVA, COL_TOTAL]:
     ).fillna(0)
 
 # ==========================================
-# KPIs REALES
+# KPIs
 # ==========================================
 
 ventas = ingresos[COL_TOTAL].sum()
@@ -147,40 +148,6 @@ col6.metric(
 )
 
 # ==========================================
-# VENTAS CLIENTE
-# ==========================================
-
-if "Cliente" in ingresos.columns:
-
-    st.subheader("📈 Ventas por cliente")
-
-    clientes = (
-        ingresos
-        .groupby("Cliente")[COL_TOTAL]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
-    st.bar_chart(clientes)
-
-# ==========================================
-# GASTOS CATEGORÍA
-# ==========================================
-
-if "Categoría" in gastos.columns:
-
-    st.subheader("📦 Gastos por categoría")
-
-    categorias = (
-        gastos
-        .groupby("Categoría")[COL_TOTAL]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
-    st.bar_chart(categorias)
-
-# ==========================================
 # TABLAS
 # ==========================================
 
@@ -224,5 +191,121 @@ if pdf_file is not None:
                 texto += contenido
 
     st.success("✅ PDF leído correctamente")
+
+    # ==========================================
+    # EXTRAER DATOS
+    # ==========================================
+
+    base_match = re.search(
+        r'Base imponible\s*([\d\.,]+)',
+        texto,
+        re.IGNORECASE
+    )
+
+    iva_match = re.search(
+        r'IVA.*?([\d\.,]+)',
+        texto,
+        re.IGNORECASE
+    )
+
+    total_match = re.search(
+        r'TOTAL FACTURA\s*([\d\.,]+)',
+        texto,
+        re.IGNORECASE
+    )
+
+    base = 0
+    iva = 0
+    total = 0
+
+    try:
+
+        if base_match:
+            base = float(
+                base_match.group(1)
+                .replace(".", "")
+                .replace(",", ".")
+            )
+
+        if iva_match:
+            iva = float(
+                iva_match.group(1)
+                .replace(".", "")
+                .replace(",", ".")
+            )
+
+        if total_match:
+            total = float(
+                total_match.group(1)
+                .replace(".", "")
+                .replace(",", ".")
+            )
+
+    except:
+        pass
+
+    st.write("Base:", base)
+    st.write("IVA:", iva)
+    st.write("Total:", total)
+
+    # ==========================================
+    # AÑADIR FACTURA
+    # ==========================================
+
+    if st.button("➕ Añadir factura a gastos"):
+
+        nueva_fila = pd.DataFrame({
+
+            "Fecha": [pd.Timestamp.today()],
+
+            "Proveedor": ["PDF AUTO"],
+
+            "Categoría": ["Pendiente"],
+
+            "Concepto": ["Factura PDF"],
+
+            "Base Imponible": [base],
+
+            "IVA %": [0.21],
+
+            "IVA (€)": [iva],
+
+            "Total (€)": [total],
+
+            "Pagado": ["No"],
+
+            "Cuenta": ["Banco"]
+
+        })
+
+        gastos = pd.concat(
+            [gastos, nueva_fila],
+            ignore_index=True
+        )
+
+        with pd.ExcelWriter(
+            excel,
+            engine="openpyxl",
+            mode="a",
+            if_sheet_exists="replace"
+        ) as writer:
+
+            ingresos.to_excel(
+                writer,
+                sheet_name="Ingresos",
+                index=False
+            )
+
+            gastos.to_excel(
+                writer,
+                sheet_name="Gastos",
+                index=False
+            )
+
+        st.success(
+            "✅ Factura añadida correctamente"
+        )
+
+    st.subheader("📄 Texto detectado")
 
     st.text(texto[:5000])
