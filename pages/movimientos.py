@@ -19,8 +19,21 @@ st.title("🍷 Movimientos de vino")
 
 conn = sqlite3.connect("bodega.db")
 
+cursor = conn.cursor()
+
 # ==========================================
-# LEER DEPOSITOS
+# LOTES
+# ==========================================
+
+lotes = pd.read_sql_query(
+    "SELECT * FROM lotes",
+    conn
+)
+
+lista_lotes = lotes["lote"].tolist()
+
+# ==========================================
+# DEPOSITOS
 # ==========================================
 
 depositos = pd.read_sql_query(
@@ -42,16 +55,22 @@ with st.form("nuevo_movimiento"):
         "Fecha"
     )
 
+    lote = st.selectbox(
+        "Lote",
+        lista_lotes
+    )
+
     tipo = st.selectbox(
 
         "Tipo movimiento",
 
         [
+
             "Trasiego",
-            "Embotellado",
-            "Merma",
+            "Movimiento interno",
             "Corrección",
-            "Movimiento interno"
+            "Merma"
+
         ]
 
     )
@@ -80,18 +99,17 @@ with st.form("nuevo_movimiento"):
     )
 
 # ==========================================
-# GUARDAR SQLITE
+# GUARDAR
 # ==========================================
 
 if guardar:
-
-    cursor = conn.cursor()
 
     cursor.execute("""
 
     INSERT INTO movimientos (
 
         fecha,
+        lote,
         tipo,
         origen,
         destino,
@@ -100,11 +118,12 @@ if guardar:
 
     )
 
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
 
     """, (
 
         str(fecha),
+        lote,
         tipo,
         origen,
         destino,
@@ -120,10 +139,10 @@ if guardar:
     )
 
 # ==========================================
-# TABLA MOVIMIENTOS
+# HISTORICO
 # ==========================================
 
-st.header("📦 Movimientos registrados")
+st.header("📦 Histórico movimientos")
 
 movimientos = pd.read_sql_query(
     "SELECT * FROM movimientos",
@@ -139,12 +158,12 @@ st.dataframe(
 # KPIS
 # ==========================================
 
-st.header("📊 Resumen movimientos")
+st.header("📊 Resumen")
 
 c1, c2, c3 = st.columns(3)
 
 c1.metric(
-    "Número movimientos",
+    "Movimientos",
     len(movimientos)
 )
 
@@ -154,14 +173,8 @@ c2.metric(
 )
 
 c3.metric(
-    "Trasiegos",
-    len(
-        movimientos[
-            movimientos["tipo"]
-            ==
-            "Trasiego"
-        ]
-    )
+    "Lotes activos",
+    movimientos["lote"].nunique()
 )
 
 conn.close()
