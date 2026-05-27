@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import pdfplumber
 import re
+from io import BytesIO
 
 # ==========================================
 # CONFIG
@@ -209,64 +210,6 @@ if (
         use_container_width=True
     )
 
-    st.subheader("📈 Ventas trimestrales")
-
-    st.bar_chart(
-        resumen.set_index(
-            "Trimestre"
-        )["Total (€)_Ingresos"]
-    )
-
-    st.subheader("💸 Gastos trimestrales")
-
-    st.bar_chart(
-        resumen.set_index(
-            "Trimestre"
-        )["Total (€)_Gastos"]
-    )
-
-    st.subheader("💰 Beneficio trimestral")
-
-    st.line_chart(
-        resumen.set_index(
-            "Trimestre"
-        )["Beneficio"]
-    )
-
-# ==========================================
-# VENTAS CLIENTES
-# ==========================================
-
-if "Cliente" in ingresos.columns:
-
-    st.subheader("📈 Ventas por cliente")
-
-    clientes = (
-        ingresos
-        .groupby("Cliente")[COL_TOTAL]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
-    st.bar_chart(clientes)
-
-# ==========================================
-# GASTOS CATEGORÍA
-# ==========================================
-
-if "Categoría" in gastos.columns:
-
-    st.subheader("📦 Gastos por categoría")
-
-    categorias = (
-        gastos
-        .groupby("Categoría")[COL_TOTAL]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
-    st.bar_chart(categorias)
-
 # ==========================================
 # TABLAS
 # ==========================================
@@ -291,20 +234,12 @@ st.dataframe(
 
 proveedores = {
 
-    # ======================================
-    # BOTELLAS
-    # ======================================
-
     "BRAIZU": {
         "categoria": "Botellas",
         "concepto": "Botellas Borgoña + palet",
         "tipo": "Producción",
         "iva": 0.21
     },
-
-    # ======================================
-    # CORCHOS
-    # ======================================
 
     "VINVENTIONS": {
         "categoria": "Corchos",
@@ -313,20 +248,12 @@ proveedores = {
         "iva": 0.21
     },
 
-    # ======================================
-    # ETIQUETAS
-    # ======================================
-
     "SOLGE": {
         "categoria": "Etiquetas",
         "concepto": "Etiquetas vino",
         "tipo": "Producción",
         "iva": 0.21
     },
-
-    # ======================================
-    # PACKAGING
-    # ======================================
 
     "CAVATAP": {
         "categoria": "Packaging",
@@ -335,24 +262,6 @@ proveedores = {
         "iva": 0.21
     },
 
-    "GIL GAMS": {
-        "categoria": "Packaging",
-        "concepto": "Material packaging",
-        "tipo": "Producción",
-        "iva": 0.21
-    },
-
-    "SOLBI MURAL": {
-        "categoria": "Packaging",
-        "concepto": "Material embalaje",
-        "tipo": "Producción",
-        "iva": 0.21
-    },
-
-    # ======================================
-    # TRANSPORTE
-    # ======================================
-
     "ECUTRANS": {
         "categoria": "Transporte",
         "concepto": "Transporte pallet",
@@ -360,50 +269,10 @@ proveedores = {
         "iva": 0.21
     },
 
-    # ======================================
-    # CUOTAS
-    # ======================================
-
-    "ECOVIDRIO": {
-        "categoria": "Cuotas",
-        "concepto": "Cuota Ecovidrio",
-        "tipo": "Administración",
-        "iva": 0.10
-    },
-
-    "DOCA": {
-        "categoria": "Cuotas",
-        "concepto": "Cuotas DOCa Rioja",
-        "tipo": "Administración",
-        "iva": 0.21
-    },
-
-    # ======================================
-    # TELEFONÍA
-    # ======================================
-
     "MOVISTAR": {
         "categoria": "Telefonía",
         "concepto": "Telefonía empresa",
         "tipo": "Servicios",
-        "iva": 0.21
-    },
-
-    "ICOMMERS EVERY": {
-        "categoria": "Software",
-        "concepto": "Software ecommerce",
-        "tipo": "Servicios",
-        "iva": 0.21
-    },
-
-    # ======================================
-    # BODEGA
-    # ======================================
-
-    "FRANCISCO VIA": {
-        "categoria": "Bodega",
-        "concepto": "Material bodega",
-        "tipo": "Producción",
         "iva": 0.21
     }
 
@@ -594,13 +463,23 @@ if pdf_file is not None:
     if (
         "Proveedor" in gastos.columns
         and
-        "Total (€)" in gastos.columns
+        "Factura" in gastos.columns
     ):
 
         coincidencias = gastos[
-            (gastos["Proveedor"] == proveedor_detectado)
+            (
+                gastos["Proveedor"]
+                .astype(str)
+                ==
+                proveedor_detectado
+            )
             &
-            (gastos["Total (€)"] == total)
+            (
+                gastos["Factura"]
+                .astype(str)
+                ==
+                numero_factura
+            )
         ]
 
         if len(coincidencias) > 0:
@@ -610,7 +489,7 @@ if pdf_file is not None:
     if duplicado:
 
         st.warning(
-            "⚠️ Esta factura parece duplicada"
+            "⚠️ Esta factura ya existe"
         )
 
     else:
@@ -658,11 +537,15 @@ if pdf_file is not None:
                 ignore_index=True
             )
 
+            # ==========================================
+            # GENERAR EXCEL DESCARGABLE
+            # ==========================================
+
+            output = BytesIO()
+
             with pd.ExcelWriter(
-                excel,
-                engine="openpyxl",
-                mode="a",
-                if_sheet_exists="replace"
+                output,
+                engine="openpyxl"
             ) as writer:
 
                 ingresos.to_excel(
@@ -678,10 +561,15 @@ if pdf_file is not None:
                 )
 
             st.success(
-                "✅ Factura añadida correctamente"
+                "✅ Factura añadida al Excel"
             )
 
-            st.rerun()
+            st.download_button(
+                label="⬇️ Descargar Excel actualizado",
+                data=output.getvalue(),
+                file_name="Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
     # ==========================================
     # TEXTO PDF
