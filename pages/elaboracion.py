@@ -7,11 +7,11 @@ import pandas as pd
 # ==========================================
 
 st.set_page_config(
-    page_title="Elaboración",
+    page_title="Trazabilidad",
     layout="wide"
 )
 
-st.title("🍷 Elaboración")
+st.title("🌳 Árbol de trazabilidad")
 
 # ==========================================
 # SQLITE
@@ -19,249 +19,211 @@ st.title("🍷 Elaboración")
 
 conn = sqlite3.connect("bodega.db")
 
-cursor = conn.cursor()
-
 # ==========================================
-# DEPOSITOS
+# LOTES
 # ==========================================
 
-depositos = pd.read_sql_query(
-    "SELECT * FROM depositos",
+lotes = pd.read_sql_query(
+    "SELECT * FROM lotes",
     conn
 )
 
-lista_depositos = depositos["nombre"].tolist()
+lista_lotes = lotes["lote"].tolist()
 
 # ==========================================
-# PRODUCTOS
+# SELECCION LOTE
 # ==========================================
 
-productos = pd.read_sql_query(
-    "SELECT * FROM enologicos",
+lote = st.selectbox(
+    "Seleccionar lote",
+    lista_lotes
+)
+
+# ==========================================
+# INFO LOTE
+# ==========================================
+
+st.header("🍷 Información lote")
+
+info_lote = pd.read_sql_query(
+
+    f"""
+
+    SELECT *
+
+    FROM lotes
+
+    WHERE lote = '{lote}'
+
+    """,
+
     conn
-)
 
-lista_productos = productos[
-    "producto"
-].unique().tolist()
-
-# ==========================================
-# FASE
-# ==========================================
-
-fase = st.selectbox(
-
-    "Fase elaboración",
-
-    [
-
-        "Recepción",
-        "Fermentación alcohólica",
-        "Fermentación maloláctica",
-        "Final fermentación maloláctica",
-        "Crianza",
-        "Clarificación",
-        "Estabilización",
-        "Embotellado",
-        "Crianza botella"
-
-    ]
-
-)
-
-# ==========================================
-# COMUNES
-# ==========================================
-
-fecha = st.date_input(
-    "Fecha"
-)
-
-deposito = st.selectbox(
-    "Depósito",
-    lista_depositos
-)
-
-# ==========================================
-# PRODUCTO ENOLOGICO
-# ==========================================
-
-st.header("🧪 Producto enológico")
-
-producto_enologico = st.selectbox(
-
-    "Producto",
-
-    ["Ninguno"] + lista_productos
-
-)
-
-dosis = st.number_input(
-    "Cantidad usada",
-    min_value=0.0
-)
-
-unidad_dosis = st.selectbox(
-
-    "Unidad",
-
-    [
-
-        "kg",
-        "g",
-        "L",
-        "mL"
-
-    ]
-
-)
-
-# ==========================================
-# OBSERVACIONES
-# ==========================================
-
-observaciones = st.text_area(
-    "Observaciones"
-)
-
-# ==========================================
-# GUARDAR SIMPLE
-# ==========================================
-
-guardar = st.button(
-    "Guardar elaboración"
-)
-
-if guardar:
-
-    # ======================================
-    # ELABORACION
-    # ======================================
-
-    cursor.execute("""
-
-    INSERT INTO elaboracion (
-
-        fecha,
-        deposito,
-        fase,
-        texto1
-
-    )
-
-    VALUES (?, ?, ?, ?)
-
-    """, (
-
-        str(fecha),
-        deposito,
-        fase,
-        observaciones
-
-    ))
-
-    # ======================================
-    # CONSUMO ENOLOGICO
-    # ======================================
-
-    if producto_enologico != "Ninguno":
-
-        cursor.execute("""
-
-        INSERT INTO consumos_enologicos (
-
-            fecha,
-            deposito,
-            fase,
-            producto,
-            dosis,
-            unidad
-
-        )
-
-        VALUES (?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            str(fecha),
-            deposito,
-            fase,
-            producto_enologico,
-            dosis,
-            unidad_dosis
-
-        ))
-
-        # ==================================
-        # DESCONTAR STOCK
-        # ==================================
-
-        cursor.execute("""
-
-        INSERT INTO enologicos (
-
-            fecha,
-            producto,
-            tipo,
-            proveedor,
-            lote_proveedor,
-            cantidad,
-            unidad,
-            coste
-
-        )
-
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            str(fecha),
-            producto_enologico,
-            "CONSUMO",
-            "",
-            "",
-            -dosis,
-            unidad_dosis,
-            0
-
-        ))
-
-    conn.commit()
-
-    st.success(
-        "✅ Elaboración guardada"
-    )
-
-# ==========================================
-# HISTORICO
-# ==========================================
-
-st.header("📦 Histórico elaboración")
-
-historico = pd.read_sql_query(
-    "SELECT * FROM elaboracion",
-    conn
 )
 
 st.dataframe(
-    historico,
+    info_lote,
     use_container_width=True
 )
 
 # ==========================================
-# CONSUMOS
+# VENDIMIA
 # ==========================================
 
-st.header("🧪 Consumos enológicos")
+st.header("🍇 Vendimia")
+
+vendimia = pd.read_sql_query(
+
+    f"""
+
+    SELECT *
+
+    FROM vendimia
+
+    WHERE lote = '{lote}'
+
+    """,
+
+    conn
+
+)
+
+st.dataframe(
+    vendimia,
+    use_container_width=True
+)
+
+# ==========================================
+# MOVIMIENTOS
+# ==========================================
+
+st.header("🍷 Movimientos")
+
+movimientos = pd.read_sql_query(
+
+    f"""
+
+    SELECT *
+
+    FROM movimientos
+
+    WHERE lote = '{lote}'
+
+    """,
+
+    conn
+
+)
+
+st.dataframe(
+    movimientos,
+    use_container_width=True
+)
+
+# ==========================================
+# ELABORACION
+# ==========================================
+
+st.header("🧪 Elaboración")
+
+elaboracion = pd.read_sql_query(
+
+    f"""
+
+    SELECT *
+
+    FROM elaboracion
+
+    WHERE lote = '{lote}'
+
+    """,
+
+    conn
+
+)
+
+st.dataframe(
+    elaboracion,
+    use_container_width=True
+)
+
+# ==========================================
+# CONSUMOS ENOLOGICOS
+# ==========================================
+
+st.header("🧪 Productos enológicos")
 
 consumos = pd.read_sql_query(
-    "SELECT * FROM consumos_enologicos",
+
+    f"""
+
+    SELECT *
+
+    FROM consumos_enologicos
+
+    WHERE lote = '{lote}'
+
+    """,
+
     conn
+
 )
 
 st.dataframe(
     consumos,
     use_container_width=True
+)
+
+# ==========================================
+# EMBOTELLADOS
+# ==========================================
+
+st.header("🍾 Embotellados")
+
+embotellados = pd.read_sql_query(
+
+    f"""
+
+    SELECT *
+
+    FROM movimientos
+
+    WHERE lote = '{lote}'
+
+    AND tipo = 'Embotellado'
+
+    """,
+
+    conn
+
+)
+
+st.dataframe(
+    embotellados,
+    use_container_width=True
+)
+
+# ==========================================
+# RESUMEN
+# ==========================================
+
+st.header("📊 Resumen lote")
+
+c1, c2, c3 = st.columns(3)
+
+c1.metric(
+    "Movimientos",
+    len(movimientos)
+)
+
+c2.metric(
+    "Procesos elaboración",
+    len(elaboracion)
+)
+
+c3.metric(
+    "Productos enológicos",
+    len(consumos)
 )
 
 conn.close()
