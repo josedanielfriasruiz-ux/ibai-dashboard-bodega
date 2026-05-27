@@ -8,8 +8,7 @@ st.set_page_config(
 
 st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
 
-excel = "Dashboard_Bodega_Definitivo_2026.xlsx"
-
+excel = "Dashboard_Bodega_Completo_2026.xlsx"
 # Cargar datos
 ingresos = pd.read_excel(excel, sheet_name="Ingresos")
 gastos = pd.read_excel(excel, sheet_name="Gastos")
