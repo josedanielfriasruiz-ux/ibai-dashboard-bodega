@@ -22,7 +22,18 @@ conn = sqlite3.connect("bodega.db")
 cursor = conn.cursor()
 
 # ==========================================
-# LEER DEPOSITOS
+# LOTES
+# ==========================================
+
+lotes = pd.read_sql_query(
+    "SELECT * FROM lotes",
+    conn
+)
+
+lista_lotes = lotes["lote"].tolist()
+
+# ==========================================
+# DEPOSITOS
 # ==========================================
 
 depositos = pd.read_sql_query(
@@ -44,8 +55,9 @@ with st.form("nuevo_embotellado"):
         "Fecha"
     )
 
-    lote = st.text_input(
-        "Lote"
+    lote = st.selectbox(
+        "Lote",
+        lista_lotes
     )
 
     deposito = st.selectbox(
@@ -98,6 +110,7 @@ if guardar:
     INSERT INTO movimientos (
 
         fecha,
+        lote,
         tipo,
         origen,
         destino,
@@ -106,11 +119,13 @@ if guardar:
 
     )
 
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
 
     """, (
 
         str(fecha),
+
+        lote,
 
         "Embotellado",
 
@@ -120,7 +135,7 @@ if guardar:
 
         litros,
 
-        f"Lote {lote}"
+        observaciones
 
     ))
 
