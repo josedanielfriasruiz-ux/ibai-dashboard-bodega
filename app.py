@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# EXCEL
+# ARCHIVO EXCEL
 # ==========================================
 
 excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
@@ -148,6 +148,40 @@ col6.metric(
 )
 
 # ==========================================
+# VENTAS POR CLIENTE
+# ==========================================
+
+if "Cliente" in ingresos.columns:
+
+    st.subheader("📈 Ventas por cliente")
+
+    clientes = (
+        ingresos
+        .groupby("Cliente")[COL_TOTAL]
+        .sum()
+        .sort_values(ascending=False)
+    )
+
+    st.bar_chart(clientes)
+
+# ==========================================
+# GASTOS POR CATEGORÍA
+# ==========================================
+
+if "Categoría" in gastos.columns:
+
+    st.subheader("📦 Gastos por categoría")
+
+    categorias = (
+        gastos
+        .groupby("Categoría")[COL_TOTAL]
+        .sum()
+        .sort_values(ascending=False)
+    )
+
+    st.bar_chart(categorias)
+
+# ==========================================
 # TABLAS
 # ==========================================
 
@@ -278,7 +312,7 @@ if pdf_file is not None:
 
         })
 
-        gastos = pd.concat(
+        gastos_actualizados = pd.concat(
             [gastos, nueva_fila],
             ignore_index=True
         )
@@ -296,7 +330,7 @@ if pdf_file is not None:
                 index=False
             )
 
-            gastos.to_excel(
+            gastos_actualizados.to_excel(
                 writer,
                 sheet_name="Gastos",
                 index=False
@@ -305,6 +339,12 @@ if pdf_file is not None:
         st.success(
             "✅ Factura añadida correctamente"
         )
+
+        st.rerun()
+
+    # ==========================================
+    # TEXTO PDF
+    # ==========================================
 
     st.subheader("📄 Texto detectado")
 
