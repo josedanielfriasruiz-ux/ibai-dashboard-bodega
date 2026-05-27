@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# ARCHIVO EXCEL
+# EXCEL
 # ==========================================
 
 excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
@@ -148,40 +148,6 @@ col6.metric(
 )
 
 # ==========================================
-# VENTAS POR CLIENTE
-# ==========================================
-
-if "Cliente" in ingresos.columns:
-
-    st.subheader("📈 Ventas por cliente")
-
-    clientes = (
-        ingresos
-        .groupby("Cliente")[COL_TOTAL]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
-    st.bar_chart(clientes)
-
-# ==========================================
-# GASTOS POR CATEGORÍA
-# ==========================================
-
-if "Categoría" in gastos.columns:
-
-    st.subheader("📦 Gastos por categoría")
-
-    categorias = (
-        gastos
-        .groupby("Categoría")[COL_TOTAL]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
-    st.bar_chart(categorias)
-
-# ==========================================
 # TABLAS
 # ==========================================
 
@@ -198,6 +164,39 @@ st.dataframe(
     gastos,
     use_container_width=True
 )
+
+# ==========================================
+# DICCIONARIO PROVEEDORES
+# ==========================================
+
+proveedores = {
+
+    "BRAIZU": {
+        "categoria": "Botellas",
+        "concepto": "Botellas Borgoña + palet"
+    },
+
+    "VINVENTIONS": {
+        "categoria": "Corchos",
+        "concepto": "Corchos"
+    },
+
+    "ECUTRANS": {
+        "categoria": "Transporte",
+        "concepto": "Transporte pallet"
+    },
+
+    "SOLGE": {
+        "categoria": "Etiquetas",
+        "concepto": "Etiquetas vino"
+    },
+
+    "ECOVIDRIO": {
+        "categoria": "Cuotas",
+        "concepto": "Cuota Ecovidrio"
+    }
+
+}
 
 # ==========================================
 # SUBIR PDF
@@ -226,8 +225,69 @@ if pdf_file is not None:
 
     st.success("✅ PDF leído correctamente")
 
+    texto_upper = texto.upper()
+
     # ==========================================
-    # EXTRAER DATOS
+    # DETECTAR PROVEEDOR
+    # ==========================================
+
+    proveedor_detectado = "Proveedor desconocido"
+
+    categoria_detectada = "Pendiente"
+
+    concepto_detectado = "Factura PDF"
+
+    for proveedor in proveedores:
+
+        if proveedor in texto_upper:
+
+            proveedor_detectado = proveedor
+
+            categoria_detectada = proveedores[proveedor]["categoria"]
+
+            concepto_detectado = proveedores[proveedor]["concepto"]
+
+    # ==========================================
+    # FECHA
+    # ==========================================
+
+    fecha_match = re.search(
+        r'(\d{2}-\d{2}-\d{4})',
+        texto
+    )
+
+    fecha_factura = pd.Timestamp.today()
+
+    if fecha_match:
+
+        try:
+
+            fecha_factura = pd.to_datetime(
+                fecha_match.group(1),
+                dayfirst=True
+            )
+
+        except:
+            pass
+
+    # ==========================================
+    # NÚMERO FACTURA
+    # ==========================================
+
+    factura_match = re.search(
+        r'Factura Núm[:\s]*([A-Z0-9\-]+)',
+        texto,
+        re.IGNORECASE
+    )
+
+    numero_factura = "SIN NUMERO"
+
+    if factura_match:
+
+        numero_factura = factura_match.group(1)
+
+    # ==========================================
+    # BASE
     # ==========================================
 
     base_match = re.search(
@@ -236,19 +296,11 @@ if pdf_file is not None:
         re.IGNORECASE
     )
 
-    iva_match = re.search(
-        r'IVA.*?([\d\.,]+)',
-        texto,
-        re.IGNORECASE
-    )
-
     base = 0
-    iva = 0
-    total = 0
 
-    try:
+    if base_match:
 
-        if base_match:
+        try:
 
             base = float(
                 base_match.group(1)
@@ -256,7 +308,24 @@ if pdf_file is not None:
                 .replace(",", ".")
             )
 
-        if iva_match:
+        except:
+            pass
+
+    # ==========================================
+    # IVA
+    # ==========================================
+
+    iva_match = re.search(
+        r'IVA.*?([\d\.,]+)',
+        texto,
+        re.IGNORECASE
+    )
+
+    iva = 0
+
+    if iva_match:
+
+        try:
 
             iva = float(
                 iva_match.group(1)
@@ -264,79 +333,127 @@ if pdf_file is not None:
                 .replace(",", ".")
             )
 
-        total = round(base + iva, 2)
+        except:
+            pass
 
-    except:
-        pass
+    # ==========================================
+    # TOTAL
+    # ==========================================
+
+    total = round(base + iva, 2)
+
+    # ==========================================
+    # MOSTRAR DATOS
+    # ==========================================
+
+    st.subheader("📋 Datos detectados")
+
+    st.write("Proveedor:", proveedor_detectado)
+
+    st.write("Categoría:", categoria_detectada)
+
+    st.write("Concepto:", concepto_detectado)
+
+    st.write("Factura:", numero_factura)
+
+    st.write("Fecha:", fecha_factura)
 
     st.write("Base:", base)
+
     st.write("IVA:", iva)
+
     st.write("Total:", total)
 
     # ==========================================
-    # AÑADIR FACTURA
+    # EVITAR DUPLICADOS
     # ==========================================
 
-    if st.button("➕ Añadir factura a gastos"):
+    duplicado = False
 
-        nueva_fila = pd.DataFrame({
+    if "Proveedor" in gastos.columns and "Total (€)" in gastos.columns:
 
-            "Fecha": [pd.Timestamp.today()],
+        coincidencias = gastos[
+            (gastos["Proveedor"] == proveedor_detectado)
+            &
+            (gastos["Total (€)"] == total)
+        ]
 
-            "Proveedor": ["PDF AUTO"],
+        if len(coincidencias) > 0:
 
-            "Categoría": ["Pendiente"],
+            duplicado = True
 
-            "Concepto": ["Factura PDF"],
+    if duplicado:
 
-            "Base Imponible": [base],
-
-            "IVA %": [0.21],
-
-            "IVA (€)": [iva],
-
-            "Total (€)": [total],
-
-            "Pagado": ["No"],
-
-            "Cuenta": ["Banco"]
-
-        })
-
-        gastos_actualizados = pd.concat(
-            [gastos, nueva_fila],
-            ignore_index=True
+        st.warning(
+            "⚠️ Esta factura parece duplicada"
         )
 
-        with pd.ExcelWriter(
-            excel,
-            engine="openpyxl",
-            mode="a",
-            if_sheet_exists="replace"
-        ) as writer:
+    else:
 
-            ingresos.to_excel(
-                writer,
-                sheet_name="Ingresos",
-                index=False
+        # ==========================================
+        # BOTÓN AÑADIR
+        # ==========================================
+
+        if st.button("➕ Añadir factura a gastos"):
+
+            nueva_fila = pd.DataFrame({
+
+                "Fecha": [fecha_factura],
+
+                "Proveedor": [proveedor_detectado],
+
+                "Categoría": [categoria_detectada],
+
+                "Concepto": [concepto_detectado],
+
+                "Base Imponible": [base],
+
+                "IVA %": [0.21],
+
+                "IVA (€)": [iva],
+
+                "Total (€)": [total],
+
+                "Pagado": ["No"],
+
+                "Cuenta": ["Banco"]
+
+            })
+
+            gastos_actualizados = pd.concat(
+                [gastos, nueva_fila],
+                ignore_index=True
             )
 
-            gastos_actualizados.to_excel(
-                writer,
-                sheet_name="Gastos",
-                index=False
+            with pd.ExcelWriter(
+                excel,
+                engine="openpyxl",
+                mode="a",
+                if_sheet_exists="replace"
+            ) as writer:
+
+                ingresos.to_excel(
+                    writer,
+                    sheet_name="Ingresos",
+                    index=False
+                )
+
+                gastos_actualizados.to_excel(
+                    writer,
+                    sheet_name="Gastos",
+                    index=False
+                )
+
+            st.success(
+                "✅ Factura añadida correctamente"
             )
 
-        st.success(
-            "✅ Factura añadida correctamente"
-        )
-
-        st.rerun()
+            st.rerun()
 
     # ==========================================
     # TEXTO PDF
     # ==========================================
 
-    st.subheader("📄 Texto detectado")
+    with st.expander("📄 Ver texto detectado"):
 
-    st.text(texto[:5000])
+        st.text(texto[:5000])
