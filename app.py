@@ -14,22 +14,41 @@ st.set_page_config(
 )
 
 # ==========================================
-# EXCEL
+# TÍTULO
 # ==========================================
 
-excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
+st.title("🍷 IBAI VITICULTORES — ERP Bodega")
+
+# ==========================================
+# SUBIR EXCEL MAESTRO
+# ==========================================
+
+st.sidebar.header("📂 Excel maestro")
+
+excel_file = st.sidebar.file_uploader(
+    "Sube tu Excel de contabilidad",
+    type=["xlsx"]
+)
+
+if excel_file is None:
+
+    st.warning(
+        "⬅️ Sube primero tu Excel maestro"
+    )
+
+    st.stop()
 
 # ==========================================
 # LEER EXCEL
 # ==========================================
 
 ingresos = pd.read_excel(
-    excel,
+    excel_file,
     sheet_name="Ingresos"
 )
 
 gastos = pd.read_excel(
-    excel,
+    excel_file,
     sheet_name="Gastos"
 )
 
@@ -105,12 +124,6 @@ iva_rep = ingresos[COL_IVA].sum()
 iva_sop = gastos[COL_IVA].sum()
 
 resultado_iva = iva_rep - iva_sop
-
-# ==========================================
-# DASHBOARD
-# ==========================================
-
-st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
 
 # ==========================================
 # RESUMEN FINANCIERO
@@ -210,6 +223,30 @@ if (
         use_container_width=True
     )
 
+    st.subheader("📈 Ventas trimestrales")
+
+    st.bar_chart(
+        resumen.set_index(
+            "Trimestre"
+        )["Total (€)_Ingresos"]
+    )
+
+    st.subheader("💸 Gastos trimestrales")
+
+    st.bar_chart(
+        resumen.set_index(
+            "Trimestre"
+        )["Total (€)_Gastos"]
+    )
+
+    st.subheader("💰 Beneficio trimestral")
+
+    st.line_chart(
+        resumen.set_index(
+            "Trimestre"
+        )["Beneficio"]
+    )
+
 # ==========================================
 # TABLAS
 # ==========================================
@@ -279,7 +316,7 @@ proveedores = {
 }
 
 # ==========================================
-# SUBIR PDF
+# SUBIR FACTURA PDF
 # ==========================================
 
 st.header("📄 Subir factura PDF")
@@ -538,6 +575,23 @@ if pdf_file is not None:
             )
 
             # ==========================================
+            # ACTUALIZAR DASHBOARD EN MEMORIA
+            # ==========================================
+
+            gastos = gastos_actualizados
+
+            st.success(
+                "✅ Factura añadida correctamente"
+            )
+
+            st.subheader("💸 Gastos actualizados")
+
+            st.dataframe(
+                gastos_actualizados,
+                use_container_width=True
+            )
+
+            # ==========================================
             # GENERAR EXCEL DESCARGABLE
             # ==========================================
 
@@ -559,10 +613,6 @@ if pdf_file is not None:
                     sheet_name="Gastos",
                     index=False
                 )
-
-            st.success(
-                "✅ Factura añadida al Excel"
-            )
 
             st.download_button(
                 label="⬇️ Descargar Excel actualizado",
