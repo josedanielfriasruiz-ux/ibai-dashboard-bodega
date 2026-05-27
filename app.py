@@ -148,6 +148,40 @@ col6.metric(
 )
 
 # ==========================================
+# VENTAS CLIENTES
+# ==========================================
+
+if "Cliente" in ingresos.columns:
+
+    st.subheader("📈 Ventas por cliente")
+
+    clientes = (
+        ingresos
+        .groupby("Cliente")[COL_TOTAL]
+        .sum()
+        .sort_values(ascending=False)
+    )
+
+    st.bar_chart(clientes)
+
+# ==========================================
+# GASTOS CATEGORÍA
+# ==========================================
+
+if "Categoría" in gastos.columns:
+
+    st.subheader("📦 Gastos por categoría")
+
+    categorias = (
+        gastos
+        .groupby("Categoría")[COL_TOTAL]
+        .sum()
+        .sort_values(ascending=False)
+    )
+
+    st.bar_chart(categorias)
+
+# ==========================================
 # TABLAS
 # ==========================================
 
@@ -171,29 +205,120 @@ st.dataframe(
 
 proveedores = {
 
+    # ======================================
+    # BOTELLAS
+    # ======================================
+
     "BRAIZU": {
         "categoria": "Botellas",
-        "concepto": "Botellas Borgoña + palet"
+        "concepto": "Botellas Borgoña + palet",
+        "tipo": "Producción",
+        "iva": 0.21
     },
+
+    # ======================================
+    # CORCHOS
+    # ======================================
 
     "VINVENTIONS": {
         "categoria": "Corchos",
-        "concepto": "Corchos"
+        "concepto": "Corchos microaglomerados",
+        "tipo": "Producción",
+        "iva": 0.21
     },
 
-    "ECUTRANS": {
-        "categoria": "Transporte",
-        "concepto": "Transporte pallet"
-    },
+    # ======================================
+    # ETIQUETAS
+    # ======================================
 
     "SOLGE": {
         "categoria": "Etiquetas",
-        "concepto": "Etiquetas vino"
+        "concepto": "Etiquetas vino",
+        "tipo": "Producción",
+        "iva": 0.21
     },
+
+    # ======================================
+    # PACKAGING
+    # ======================================
+
+    "CAVATAP": {
+        "categoria": "Packaging",
+        "concepto": "Cápsulas y packaging",
+        "tipo": "Producción",
+        "iva": 0.21
+    },
+
+    "GIL GAMS": {
+        "categoria": "Packaging",
+        "concepto": "Material packaging",
+        "tipo": "Producción",
+        "iva": 0.21
+    },
+
+    "SOLBI MURAL": {
+        "categoria": "Packaging",
+        "concepto": "Material embalaje",
+        "tipo": "Producción",
+        "iva": 0.21
+    },
+
+    # ======================================
+    # TRANSPORTE
+    # ======================================
+
+    "ECUTRANS": {
+        "categoria": "Transporte",
+        "concepto": "Transporte pallet",
+        "tipo": "Logística",
+        "iva": 0.21
+    },
+
+    # ======================================
+    # CUOTAS
+    # ======================================
 
     "ECOVIDRIO": {
         "categoria": "Cuotas",
-        "concepto": "Cuota Ecovidrio"
+        "concepto": "Cuota Ecovidrio",
+        "tipo": "Administración",
+        "iva": 0.10
+    },
+
+    "DOCA": {
+        "categoria": "Cuotas",
+        "concepto": "Cuotas DOCa Rioja",
+        "tipo": "Administración",
+        "iva": 0.21
+    },
+
+    # ======================================
+    # TELEFONÍA
+    # ======================================
+
+    "MOVISTAR": {
+        "categoria": "Telefonía",
+        "concepto": "Telefonía empresa",
+        "tipo": "Servicios",
+        "iva": 0.21
+    },
+
+    "ICOMMERS EVERY": {
+        "categoria": "Software",
+        "concepto": "Software ecommerce",
+        "tipo": "Servicios",
+        "iva": 0.21
+    },
+
+    # ======================================
+    # BODEGA
+    # ======================================
+
+    "FRANCISCO VIA": {
+        "categoria": "Bodega",
+        "concepto": "Material bodega",
+        "tipo": "Producción",
+        "iva": 0.21
     }
 
 }
@@ -237,6 +362,10 @@ if pdf_file is not None:
 
     concepto_detectado = "Factura PDF"
 
+    tipo_detectado = "General"
+
+    iva_detectado = 0.21
+
     for proveedor in proveedores:
 
         if proveedor in texto_upper:
@@ -246,6 +375,10 @@ if pdf_file is not None:
             categoria_detectada = proveedores[proveedor]["categoria"]
 
             concepto_detectado = proveedores[proveedor]["concepto"]
+
+            tipo_detectado = proveedores[proveedor]["tipo"]
+
+            iva_detectado = proveedores[proveedor]["iva"]
 
     # ==========================================
     # FECHA
@@ -354,6 +487,8 @@ if pdf_file is not None:
 
     st.write("Concepto:", concepto_detectado)
 
+    st.write("Tipo:", tipo_detectado)
+
     st.write("Factura:", numero_factura)
 
     st.write("Fecha:", fecha_factura)
@@ -370,7 +505,10 @@ if pdf_file is not None:
 
     duplicado = False
 
-    if "Proveedor" in gastos.columns and "Total (€)" in gastos.columns:
+    if (
+        "Proveedor" in gastos.columns
+        and "Total (€)" in gastos.columns
+    ):
 
         coincidencias = gastos[
             (gastos["Proveedor"] == proveedor_detectado)
@@ -406,9 +544,13 @@ if pdf_file is not None:
 
                 "Concepto": [concepto_detectado],
 
+                "Tipo": [tipo_detectado],
+
+                "Factura": [numero_factura],
+
                 "Base Imponible": [base],
 
-                "IVA %": [0.21],
+                "IVA %": [iva_detectado],
 
                 "IVA (€)": [iva],
 
