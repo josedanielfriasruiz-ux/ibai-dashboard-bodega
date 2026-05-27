@@ -2,11 +2,9 @@ import streamlit as st
 import pandas as pd
 import pdfplumber
 import re
-import os
-from openpyxl import load_workbook
 
 # ==========================================
-# CONFIGURACIÓN
+# CONFIG
 # ==========================================
 
 st.set_page_config(
@@ -15,13 +13,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# TÍTULO
-# ==========================================
-
-st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
-
-# ==========================================
-# ARCHIVO EXCEL
+# EXCEL
 # ==========================================
 
 excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
@@ -48,18 +40,53 @@ ingresos.columns = ingresos.columns.str.strip()
 gastos.columns = gastos.columns.str.strip()
 
 # ==========================================
+# DETECTAR COLUMNAS AUTOMÁTICAMENTE
+# ==========================================
+
+col_total_ingresos = None
+col_total_gastos = None
+col_iva_ingresos = None
+col_iva_gastos = None
+
+for col in ingresos.columns:
+
+    if "total" in col.lower():
+
+        col_total_ingresos = col
+
+    if "iva" in col.lower():
+
+        col_iva_ingresos = col
+
+for col in gastos.columns:
+
+    if "total" in col.lower():
+
+        col_total_gastos = col
+
+    if "iva" in col.lower():
+
+        col_iva_gastos = col
+
+# ==========================================
 # KPIs
 # ==========================================
 
-ventas = ingresos["Total"].sum()
+ventas = ingresos[col_total_ingresos].sum()
 
-gastos_total = gastos["Total"].sum()
+gastos_total = gastos[col_total_gastos].sum()
 
 beneficio = ventas - gastos_total
 
-iva_rep = ingresos["IVA"].sum()
+iva_rep = ingresos[col_iva_ingresos].sum()
 
-iva_sop = gastos["IVA"].sum()
+iva_sop = gastos[col_iva_gastos].sum()
+
+# ==========================================
+# TÍTULO
+# ==========================================
+
+st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
 
 # ==========================================
 # MÉTRICAS
@@ -97,62 +124,38 @@ col5.metric(
 )
 
 # ==========================================
-# VENTAS POR CLIENTE
+# CLIENTES
 # ==========================================
 
 st.subheader("📈 Ventas por cliente")
 
-clientes = (
-    ingresos
-    .groupby("Cliente")["Total"]
-    .sum()
-    .sort_values(ascending=False)
-)
+if "Cliente" in ingresos.columns:
 
-st.bar_chart(clientes)
+    clientes = (
+        ingresos
+        .groupby("Cliente")[col_total_ingresos]
+        .sum()
+        .sort_values(ascending=False)
+    )
+
+    st.bar_chart(clientes)
 
 # ==========================================
-# GASTOS POR CATEGORÍA
+# CATEGORÍAS
 # ==========================================
 
 st.subheader("📦 Gastos por categoría")
 
-categorias = (
-    gastos
-    .groupby("Categoria")["Total"]
-    .sum()
-    .sort_values(ascending=False)
-)
+if "Categoría" in gastos.columns:
 
-st.bar_chart(categorias)
+    categorias = (
+        gastos
+        .groupby("Categoría")[col_total_gastos]
+        .sum()
+        .sort_values(ascending=False)
+    )
 
-# ==========================================
-# VENTAS POR TRIMESTRE
-# ==========================================
-
-st.subheader("📊 Ventas por trimestre")
-
-ventas_trim = (
-    ingresos
-    .groupby("Trimestre")["Total"]
-    .sum()
-)
-
-st.bar_chart(ventas_trim)
-
-# ==========================================
-# IVA TRIMESTRAL
-# ==========================================
-
-st.subheader("💰 IVA trimestral")
-
-iva_trim = (
-    ingresos
-    .groupby("Trimestre")["IVA"]
-    .sum()
-)
-
-st.line_chart(iva_trim)
+    st.bar_chart(categorias)
 
 # ==========================================
 # TABLAS
@@ -173,7 +176,7 @@ st.dataframe(
 )
 
 # ==========================================
-# SUBIR FACTURA PDF
+# SUBIR PDF
 # ==========================================
 
 st.header("📄 Subir factura PDF")
@@ -185,23 +188,9 @@ pdf_file = st.file_uploader(
 
 if pdf_file is not None:
 
-    # ==========================================
-    # GUARDAR PDF TEMPORAL
-    # ==========================================
-
-    with open(pdf_file.name, "wb") as f:
-
-        f.write(
-            pdf_file.getbuffer()
-        )
-
     texto = ""
 
-    # ==========================================
-    # LEER PDF
-    # ==========================================
-
-    with pdfplumber.open(pdf_file.name) as pdf:
+    with pdfplumber.open(pdf_file) as pdf:
 
         for pagina in pdf.pages:
 
@@ -213,191 +202,6 @@ if pdf_file is not None:
 
     st.success("✅ PDF leído correctamente")
 
-    # ==========================================
-    # EXTRAER DATOS
-    # ==========================================
+    st.subheader("📄 Texto detectado")
 
-    factura = re.search(
-        r'Factura\\s*(\\d+)|Número de Factura\\s*(\\d+)',
-        texto,
-        re.IGNORECASE
-    )
-
-    base = re.search(
-        r'Base imponible\\s*([\\d\\.,]+)',
-        texto,
-        re.IGNORECASE
-    )
-
-    iva = re.search(
-        r'Cuota IVA\\s*([\\d\\.,]+)',
-        texto,
-        re.IGNORECASE
-    )
-
-    total = re.search(
-        r'Importe total\\s*([\\d\\.,]+)',
-        texto,
-        re.IGNORECASE
-    )
-
-    # ==========================================
-    # DATOS EXTRAÍDOS
-    # ==========================================
-
-    numero_factura = (
-        factura.group(1)
-        if factura and factura.group(1)
-        else "No detectado"
-    )
-
-    base_imponible = (
-        base.group(1)
-        if base
-        else "0"
-    )
-
-    cuota_iva = (
-        iva.group(1)
-        if iva
-        else "0"
-    )
-
-    total_factura = (
-        total.group(1)
-        if total
-        else "0"
-    )
-
-    # ==========================================
-    # MOSTRAR DATOS
-    # ==========================================
-
-    st.subheader("📋 Datos detectados")
-
-    st.write(
-        "Número factura:",
-        numero_factura
-    )
-
-    st.write(
-        "Base imponible:",
-        base_imponible
-    )
-
-    st.write(
-        "IVA:",
-        cuota_iva
-    )
-
-    st.write(
-        "Total:",
-        total_factura
-    )
-
-    # ==========================================
-    # BOTÓN GUARDAR
-    # ==========================================
-
-    if st.button("➕ Añadir factura al Excel"):
-
-        try:
-
-            # -------------------------
-            # CONVERTIR NÚMEROS
-            # -------------------------
-
-            base_float = float(
-                base_imponible
-                .replace(".", "")
-                .replace(",", ".")
-            )
-
-            iva_float = float(
-                cuota_iva
-                .replace(".", "")
-                .replace(",", ".")
-            )
-
-            total_float = float(
-                total_factura
-                .replace(".", "")
-                .replace(",", ".")
-            )
-
-            # -------------------------
-            # NUEVA FILA
-            # -------------------------
-
-            nueva_fila = {
-
-                "Fecha": pd.Timestamp.today().date(),
-
-                "Trimestre": "2T",
-
-                "Proveedor": "PDF AUTO",
-
-                "Categoria": "Pendiente clasificar",
-
-                "Base": base_float,
-
-                "IVA": iva_float,
-
-                "Total": total_float
-
-            }
-
-            # -------------------------
-            # AÑADIR A GASTOS
-            # -------------------------
-
-            gastos = pd.concat(
-                [
-                    gastos,
-                    pd.DataFrame([nueva_fila])
-                ],
-                ignore_index=True
-            )
-
-            # -------------------------
-            # GUARDAR EXCEL
-            # -------------------------
-
-            with pd.ExcelWriter(
-                excel,
-                engine="openpyxl",
-                mode="a",
-                if_sheet_exists="replace"
-            ) as writer:
-
-                ingresos.to_excel(
-                    writer,
-                    sheet_name="Ingresos",
-                    index=False
-                )
-
-                gastos.to_excel(
-                    writer,
-                    sheet_name="Gastos",
-                    index=False
-                )
-
-            st.success(
-                "✅ Factura añadida automáticamente al Excel"
-            )
-
-        except Exception as e:
-
-            st.error(
-                f"❌ Error guardando factura: {e}"
-            )
-
-    # ==========================================
-    # TEXTO EXTRAÍDO
-    # ==========================================
-
-    with st.expander("📄 Ver texto extraído del PDF"):
-
-        st.text(
-            texto[:5000]
-        )
+    st.text(texto[:5000])
