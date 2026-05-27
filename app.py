@@ -242,12 +242,6 @@ if pdf_file is not None:
         re.IGNORECASE
     )
 
-    total_match = re.search(
-        r'TOTAL FACTURA\s*([\d\.,]+)',
-        texto,
-        re.IGNORECASE
-    )
-
     base = 0
     iva = 0
     total = 0
@@ -255,6 +249,7 @@ if pdf_file is not None:
     try:
 
         if base_match:
+
             base = float(
                 base_match.group(1)
                 .replace(".", "")
@@ -262,18 +257,14 @@ if pdf_file is not None:
             )
 
         if iva_match:
+
             iva = float(
                 iva_match.group(1)
                 .replace(".", "")
                 .replace(",", ".")
             )
 
-        if total_match:
-            total = float(
-                total_match.group(1)
-                .replace(".", "")
-                .replace(",", ".")
-            )
+        total = round(base + iva, 2)
 
     except:
         pass
