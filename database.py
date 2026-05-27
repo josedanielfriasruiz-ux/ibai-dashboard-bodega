@@ -1,20 +1,7 @@
-import streamlit as st
 import sqlite3
-import pandas as pd
 
 # ==========================================
-# CONFIG
-# ==========================================
-
-st.set_page_config(
-    page_title="Elaboración",
-    layout="wide"
-)
-
-st.title("🍷 Elaboración")
-
-# ==========================================
-# SQLITE
+# CONEXION
 # ==========================================
 
 conn = sqlite3.connect("bodega.db")
@@ -22,246 +9,240 @@ conn = sqlite3.connect("bodega.db")
 cursor = conn.cursor()
 
 # ==========================================
-# DEPOSITOS
+# BORRAR TABLAS ANTIGUAS
 # ==========================================
 
-depositos = pd.read_sql_query(
-    "SELECT * FROM depositos",
-    conn
-)
-
-lista_depositos = depositos["nombre"].tolist()
-
-# ==========================================
-# PRODUCTOS
-# ==========================================
-
-productos = pd.read_sql_query(
-    "SELECT * FROM enologicos",
-    conn
-)
-
-lista_productos = productos[
-    "producto"
-].unique().tolist()
+cursor.execute("DROP TABLE IF EXISTS depositos")
+cursor.execute("DROP TABLE IF EXISTS lotes")
+cursor.execute("DROP TABLE IF EXISTS vendimia")
+cursor.execute("DROP TABLE IF EXISTS movimientos")
+cursor.execute("DROP TABLE IF EXISTS stock_seco")
+cursor.execute("DROP TABLE IF EXISTS enologicos")
+cursor.execute("DROP TABLE IF EXISTS elaboracion")
+cursor.execute("DROP TABLE IF EXISTS consumos_enologicos")
 
 # ==========================================
-# FASE
+# TABLA DEPOSITOS
 # ==========================================
 
-fase = st.selectbox(
+cursor.execute("""
 
-    "Fase elaboración",
+CREATE TABLE depositos (
 
-    [
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        "Recepción",
-        "Fermentación alcohólica",
-        "Fermentación maloláctica",
-        "Final fermentación maloláctica",
-        "Crianza",
-        "Clarificación",
-        "Estabilización",
-        "Embotellado",
-        "Crianza botella"
+    nombre TEXT,
 
-    ]
+    capacidad_l REAL,
+
+    tipo TEXT,
+
+    estado TEXT
 
 )
 
-# ==========================================
-# COMUNES
-# ==========================================
-
-fecha = st.date_input(
-    "Fecha"
-)
-
-deposito = st.selectbox(
-    "Depósito",
-    lista_depositos
-)
+""")
 
 # ==========================================
-# PRODUCTO ENOLOGICO
+# TABLA LOTES
 # ==========================================
 
-st.header("🧪 Producto enológico")
+cursor.execute("""
 
-producto_enologico = st.selectbox(
+CREATE TABLE lotes (
 
-    "Producto",
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    ["Ninguno"] + lista_productos
+    lote TEXT,
 
-)
+    vino TEXT,
 
-dosis = st.number_input(
-    "Cantidad usada",
-    min_value=0.0
-)
+    anada INTEGER,
 
-unidad_dosis = st.selectbox(
+    parcela TEXT,
 
-    "Unidad",
+    estado TEXT,
 
-    [
-
-        "kg",
-        "g",
-        "L",
-        "mL"
-
-    ]
+    litros REAL
 
 )
 
+""")
+
 # ==========================================
-# OBSERVACIONES
+# TABLA VENDIMIA
 # ==========================================
 
-observaciones = st.text_area(
-    "Observaciones"
+cursor.execute("""
+
+CREATE TABLE vendimia (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    fecha TEXT,
+
+    lote TEXT,
+
+    parcela TEXT,
+
+    variedad TEXT,
+
+    kg REAL,
+
+    deposito TEXT
+
 )
 
+""")
+
 # ==========================================
-# GUARDAR SIMPLE
+# TABLA MOVIMIENTOS
 # ==========================================
 
-guardar = st.button(
-    "Guardar elaboración"
+cursor.execute("""
+
+CREATE TABLE movimientos (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    fecha TEXT,
+
+    lote TEXT,
+
+    tipo TEXT,
+
+    origen TEXT,
+
+    destino TEXT,
+
+    litros REAL,
+
+    observaciones TEXT
+
 )
 
-if guardar:
-
-    # ======================================
-    # ELABORACION
-    # ======================================
-
-    cursor.execute("""
-
-    INSERT INTO elaboracion (
-
-        fecha,
-        deposito,
-        fase,
-        texto1
-
-    )
-
-    VALUES (?, ?, ?, ?)
-
-    """, (
-
-        str(fecha),
-        deposito,
-        fase,
-        observaciones
-
-    ))
-
-    # ======================================
-    # CONSUMO ENOLOGICO
-    # ======================================
-
-    if producto_enologico != "Ninguno":
-
-        cursor.execute("""
-
-        INSERT INTO consumos_enologicos (
-
-            fecha,
-            deposito,
-            fase,
-            producto,
-            dosis,
-            unidad
-
-        )
-
-        VALUES (?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            str(fecha),
-            deposito,
-            fase,
-            producto_enologico,
-            dosis,
-            unidad_dosis
-
-        ))
-
-        # ==================================
-        # DESCONTAR STOCK
-        # ==================================
-
-        cursor.execute("""
-
-        INSERT INTO enologicos (
-
-            fecha,
-            producto,
-            tipo,
-            proveedor,
-            lote_proveedor,
-            cantidad,
-            unidad,
-            coste
-
-        )
-
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            str(fecha),
-            producto_enologico,
-            "CONSUMO",
-            "",
-            "",
-            -dosis,
-            unidad_dosis,
-            0
-
-        ))
-
-    conn.commit()
-
-    st.success(
-        "✅ Elaboración guardada"
-    )
+""")
 
 # ==========================================
-# HISTORICO
+# TABLA STOCK SECO
 # ==========================================
 
-st.header("📦 Histórico elaboración")
+cursor.execute("""
 
-historico = pd.read_sql_query(
-    "SELECT * FROM elaboracion",
-    conn
+CREATE TABLE stock_seco (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    producto TEXT,
+
+    cantidad REAL,
+
+    unidad TEXT
+
 )
 
-st.dataframe(
-    historico,
-    use_container_width=True
-)
+""")
 
 # ==========================================
-# CONSUMOS
+# TABLA ENOLOGICOS
 # ==========================================
 
-st.header("🧪 Consumos enológicos")
+cursor.execute("""
 
-consumos = pd.read_sql_query(
-    "SELECT * FROM consumos_enologicos",
-    conn
+CREATE TABLE enologicos (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    fecha TEXT,
+
+    producto TEXT,
+
+    tipo TEXT,
+
+    proveedor TEXT,
+
+    lote_proveedor TEXT,
+
+    cantidad REAL,
+
+    unidad TEXT,
+
+    coste REAL
+
 )
 
-st.dataframe(
-    consumos,
-    use_container_width=True
+""")
+
+# ==========================================
+# TABLA ELABORACION
+# ==========================================
+
+cursor.execute("""
+
+CREATE TABLE elaboracion (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    fecha TEXT,
+
+    lote TEXT,
+
+    deposito TEXT,
+
+    fase TEXT,
+
+    dato1 REAL,
+    dato2 REAL,
+    dato3 REAL,
+    dato4 REAL,
+    dato5 REAL,
+    dato6 REAL,
+    dato7 REAL,
+    dato8 REAL,
+    dato9 REAL,
+    dato10 REAL,
+
+    texto1 TEXT,
+    texto2 TEXT
+
 )
+
+""")
+
+# ==========================================
+# TABLA CONSUMOS ENOLOGICOS
+# ==========================================
+
+cursor.execute("""
+
+CREATE TABLE consumos_enologicos (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    fecha TEXT,
+
+    lote TEXT,
+
+    deposito TEXT,
+
+    fase TEXT,
+
+    producto TEXT,
+
+    dosis REAL,
+
+    unidad TEXT
+
+)
+
+""")
+
+# ==========================================
+# GUARDAR
+# ==========================================
+
+conn.commit()
 
 conn.close()
+
+print("✅ Base de datos recreada")
