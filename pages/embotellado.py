@@ -19,6 +19,8 @@ st.title("🍾 Embotellado")
 
 conn = sqlite3.connect("bodega.db")
 
+cursor = conn.cursor()
+
 # ==========================================
 # LEER DEPOSITOS
 # ==========================================
@@ -87,10 +89,8 @@ if guardar:
         2
     )
 
-    cursor = conn.cursor()
-
     # ======================================
-    # MOVIMIENTO
+    # MOVIMIENTO VINO
     # ======================================
 
     cursor.execute("""
@@ -124,6 +124,41 @@ if guardar:
 
     ))
 
+    # ======================================
+    # CONSUMO STOCK SECO
+    # ======================================
+
+    materiales = [
+
+        "Botella Borgoña",
+        "Corcho Natural",
+        "Etiqueta",
+        "Cápsula"
+
+    ]
+
+    for material in materiales:
+
+        cursor.execute("""
+
+        INSERT INTO stock_seco (
+
+            producto,
+            cantidad,
+            unidad
+
+        )
+
+        VALUES (?, ?, ?)
+
+        """, (
+
+            material,
+            -botellas,
+            "uds"
+
+        ))
+
     conn.commit()
 
     st.success(
@@ -132,6 +167,10 @@ if guardar:
 
     st.info(
         f"🍷 Litros descontados: {litros} L"
+    )
+
+    st.warning(
+        f"📦 Material consumido: {botellas} uds"
     )
 
 # ==========================================
