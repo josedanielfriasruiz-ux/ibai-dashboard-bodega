@@ -111,6 +111,10 @@ resultado_iva = iva_rep - iva_sop
 
 st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
 
+# ==========================================
+# RESUMEN FINANCIERO
+# ==========================================
+
 st.header("📊 Resumen financiero")
 
 col1, col2, col3 = st.columns(3)
@@ -146,6 +150,88 @@ col6.metric(
     "Resultado IVA",
     f"{resultado_iva:,.2f} €"
 )
+
+# ==========================================
+# RESUMEN TRIMESTRAL
+# ==========================================
+
+st.header("📅 Resumen trimestral")
+
+if (
+    "Trimestre" in ingresos.columns
+    and
+    "Trimestre" in gastos.columns
+):
+
+    resumen_ingresos = (
+        ingresos
+        .groupby("Trimestre")
+        .agg({
+            "Base Imponible": "sum",
+            "IVA (€)": "sum",
+            "Total (€)": "sum"
+        })
+        .reset_index()
+    )
+
+    resumen_gastos = (
+        gastos
+        .groupby("Trimestre")
+        .agg({
+            "Base Imponible": "sum",
+            "IVA (€)": "sum",
+            "Total (€)": "sum"
+        })
+        .reset_index()
+    )
+
+    resumen = pd.merge(
+        resumen_ingresos,
+        resumen_gastos,
+        on="Trimestre",
+        suffixes=("_Ingresos", "_Gastos")
+    )
+
+    resumen["Beneficio"] = (
+        resumen["Base Imponible_Ingresos"]
+        -
+        resumen["Base Imponible_Gastos"]
+    )
+
+    resumen["Resultado IVA"] = (
+        resumen["IVA (€)_Ingresos"]
+        -
+        resumen["IVA (€)_Gastos"]
+    )
+
+    st.dataframe(
+        resumen,
+        use_container_width=True
+    )
+
+    st.subheader("📈 Ventas trimestrales")
+
+    st.bar_chart(
+        resumen.set_index(
+            "Trimestre"
+        )["Total (€)_Ingresos"]
+    )
+
+    st.subheader("💸 Gastos trimestrales")
+
+    st.bar_chart(
+        resumen.set_index(
+            "Trimestre"
+        )["Total (€)_Gastos"]
+    )
+
+    st.subheader("💰 Beneficio trimestral")
+
+    st.line_chart(
+        resumen.set_index(
+            "Trimestre"
+        )["Beneficio"]
+    )
 
 # ==========================================
 # VENTAS CLIENTES
@@ -404,7 +490,7 @@ if pdf_file is not None:
             pass
 
     # ==========================================
-    # NÚMERO FACTURA
+    # FACTURA
     # ==========================================
 
     factura_match = re.search(
@@ -507,7 +593,8 @@ if pdf_file is not None:
 
     if (
         "Proveedor" in gastos.columns
-        and "Total (€)" in gastos.columns
+        and
+        "Total (€)" in gastos.columns
     ):
 
         coincidencias = gastos[
@@ -529,7 +616,7 @@ if pdf_file is not None:
     else:
 
         # ==========================================
-        # BOTÓN AÑADIR
+        # AÑADIR FACTURA
         # ==========================================
 
         if st.button("➕ Añadir factura a gastos"):
@@ -537,6 +624,10 @@ if pdf_file is not None:
             nueva_fila = pd.DataFrame({
 
                 "Fecha": [fecha_factura],
+
+                "Trimestre": [
+                    f"{((fecha_factura.month - 1)//3)+1}T"
+                ],
 
                 "Proveedor": [proveedor_detectado],
 
