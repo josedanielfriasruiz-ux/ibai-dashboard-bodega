@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import pdfplumber
-import re
 
 # ==========================================
 # CONFIG
@@ -13,7 +12,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# EXCEL
+# ARCHIVO EXCEL
 # ==========================================
 
 excel = "Contabilidad_Bodega_2026_COMPLETA_ACTUALIZADA.xlsx"
@@ -40,47 +39,56 @@ ingresos.columns = ingresos.columns.str.strip()
 gastos.columns = gastos.columns.str.strip()
 
 # ==========================================
-# DETECTAR COLUMNAS AUTOMÁTICAMENTE
+# COLUMNAS REALES
 # ==========================================
 
-col_total_ingresos = None
-col_total_gastos = None
-col_iva_ingresos = None
-col_iva_gastos = None
+# INGRESOS
+COL_TOTAL_INGRESOS = "Total (€)"
+COL_IVA_INGRESOS = "IVA (€)"
 
-for col in ingresos.columns:
+# GASTOS
+COL_TOTAL_GASTOS = "Total (€)"
+COL_IVA_GASTOS = "IVA (€)"
 
-    if "total" in col.lower():
+# ==========================================
+# CONVERTIR A NUMÉRICO
+# ==========================================
 
-        col_total_ingresos = col
+for col in [
+    COL_TOTAL_INGRESOS,
+    COL_IVA_INGRESOS
+]:
 
-    if "iva" in col.lower():
+    ingresos[col] = pd.to_numeric(
+        ingresos[col],
+        errors="coerce"
+    ).fillna(0)
 
-        col_iva_ingresos = col
+for col in [
+    COL_TOTAL_GASTOS,
+    COL_IVA_GASTOS
+]:
 
-for col in gastos.columns:
-
-    if "total" in col.lower():
-
-        col_total_gastos = col
-
-    if "iva" in col.lower():
-
-        col_iva_gastos = col
+    gastos[col] = pd.to_numeric(
+        gastos[col],
+        errors="coerce"
+    ).fillna(0)
 
 # ==========================================
 # KPIs
 # ==========================================
 
-ventas = ingresos[col_total_ingresos].sum()
+ventas = ingresos[COL_TOTAL_INGRESOS].sum()
 
-gastos_total = gastos[col_total_gastos].sum()
+gastos_total = gastos[COL_TOTAL_GASTOS].sum()
 
 beneficio = ventas - gastos_total
 
-iva_rep = ingresos[col_iva_ingresos].sum()
+iva_rep = ingresos[COL_IVA_INGRESOS].sum()
 
-iva_sop = gastos[col_iva_gastos].sum()
+iva_sop = gastos[COL_IVA_GASTOS].sum()
+
+resultado_iva = iva_rep - iva_sop
 
 # ==========================================
 # TÍTULO
@@ -89,7 +97,7 @@ iva_sop = gastos[col_iva_gastos].sum()
 st.title("🍷 IBAI VITICULTORES — Dashboard 2026")
 
 # ==========================================
-# MÉTRICAS
+# RESUMEN FINANCIERO
 # ==========================================
 
 st.header("📊 Resumen financiero")
@@ -111,7 +119,7 @@ col3.metric(
     f"{beneficio:,.2f} €"
 )
 
-col4, col5 = st.columns(2)
+col4, col5, col6 = st.columns(3)
 
 col4.metric(
     "IVA Repercutido",
@@ -123,17 +131,22 @@ col5.metric(
     f"{iva_sop:,.2f} €"
 )
 
-# ==========================================
-# CLIENTES
-# ==========================================
+col6.metric(
+    "Resultado IVA",
+    f"{resultado_iva:,.2f} €"
+)
 
-st.subheader("📈 Ventas por cliente")
+# ==========================================
+# VENTAS POR CLIENTE
+# ==========================================
 
 if "Cliente" in ingresos.columns:
 
+    st.subheader("📈 Ventas por cliente")
+
     clientes = (
         ingresos
-        .groupby("Cliente")[col_total_ingresos]
+        .groupby("Cliente")[COL_TOTAL_INGRESOS]
         .sum()
         .sort_values(ascending=False)
     )
@@ -141,16 +154,16 @@ if "Cliente" in ingresos.columns:
     st.bar_chart(clientes)
 
 # ==========================================
-# CATEGORÍAS
+# GASTOS POR CATEGORÍA
 # ==========================================
-
-st.subheader("📦 Gastos por categoría")
 
 if "Categoría" in gastos.columns:
 
+    st.subheader("📦 Gastos por categoría")
+
     categorias = (
         gastos
-        .groupby("Categoría")[col_total_gastos]
+        .groupby("Categoría")[COL_TOTAL_GASTOS]
         .sum()
         .sort_values(ascending=False)
     )
